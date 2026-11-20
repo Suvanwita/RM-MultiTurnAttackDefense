@@ -16,3 +16,14 @@ risk:
 file_path: "dataset/harmbench_behaviors.csv"
 
 gcp_project_id: "pk-arg-prj4-datasci"
+
+# -----------------------------------------------------------------------
+# Novelty 1: Adaptive Contextual Risk Learning
+# -----------------------------------------------------------------------
+# risk_mode: fixed    — use static α, β, γ from risk.weights (original TCA)
+# risk_mode: adaptive — predict per-turn weights via AdaptiveWeightLearner
+risk_mode: fixed
+
+# Path to the trained adaptive model (JSON). Only used when risk_mode: adaptive.
+# Train with:  python3 -m tca.train_adaptive --output tca/models/adaptive_weights.json
+adaptive_model_path: "tca/models/adaptive_weights.json"

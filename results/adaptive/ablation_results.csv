@@ -1,0 +1,10 @@
+feature,f1_drop
+historical_risk,0.0
+interaction_risk,-0.2308
+pattern_risk,0.0
+turn_index,0.0
+risk_delta,0.2263
+semantic_similarity,0.0
+intent_escalation,0.0
+topic_transition,0.0
+prediction_confidence,0.7408

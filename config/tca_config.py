@@ -98,6 +98,11 @@ class TCAConfig:
                 self.file_path = data["file_path"]
                 self.log_level = data.get("log_level", "INFO")
                 self.gcp_project_id = data.get("gcp_project_id", None)
+                # Novelty 1: Adaptive Contextual Risk Learning
+                self.risk_mode = data.get("risk_mode", "fixed")  # "fixed" | "adaptive"
+                self.adaptive_model_path = data.get(
+                    "adaptive_model_path", "tca/models/adaptive_weights.json"
+                )
 
             # Validate weights after loading
             self.risk.validate_weights()

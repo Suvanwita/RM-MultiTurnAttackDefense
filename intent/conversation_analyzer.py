@@ -47,6 +47,9 @@ class ConversationAnalyzer:
             return
 
         self.historical_risk = 0  # Reset historical risk for each row
+        # Adaptive-mode context state (reset per conversation)
+        self._prev_interaction_risk = 0.0
+        self._turn_index = 0
 
         for i in range(1, len(conversation_pairs)):
             prev_pair = conversation_pairs[i - 1]
@@ -130,10 +133,35 @@ class ConversationAnalyzer:
             content_data.get("patterns", {})
         )
 
+        # Extract adaptive-mode context from LLM response
+        intent_shift = content_data.get("intent_shift", {})
+        intent_shift_detected = bool(intent_shift.get("shift_detected", False))
+        intent_shift_risk_level = int(intent_shift.get("risk_level", 1))
+        patterns = content_data.get("patterns", {})
+        domain_shift_detected = bool(patterns.get("domain_shift", {}).get("detected", False))
+        # Per-conversation turn tracking state (initialised in analyze_row)
+        turn_index = getattr(self, "_turn_index", 0)
+        prev_ir = getattr(self, "_prev_interaction_risk", 0.0)
+        prev_human = str(prev_pair[1]) if prev_pair and len(prev_pair) > 1 else ""
+        cur_human = str(current_pair[1]) if current_pair and len(current_pair) > 1 else ""
+
         progressive_risk = self.risk_calculator.calculate_progressive_risk(
-            self.historical_risk, interaction_risk, pattern_risk
+            self.historical_risk,
+            interaction_risk,
+            pattern_risk,
+            # Adaptive-mode context (ignored in fixed mode):
+            turn_index=turn_index,
+            prev_interaction_risk=prev_ir,
+            current_human_turn=cur_human,
+            prev_human_turn=prev_human,
+            intent_shift_detected=intent_shift_detected,
+            intent_shift_risk_level=intent_shift_risk_level,
+            domain_shift_detected=domain_shift_detected,
         )
         self.historical_risk = progressive_risk  # Update historical risk
+        # Advance per-conversation turn state
+        self._prev_interaction_risk = float(interaction_risk)
+        self._turn_index = turn_index + 1
 
         # Security decision
         decision = self.decision_engine.evaluate_risk(

@@ -8,3 +8,10 @@ watchdog==6.0.0
 pydantic>=2.0.0
 pytest>=7.0.0
 pytest-asyncio>=0.23.0
+# Novelty 1: Adaptive Contextual Risk Learning
+numpy>=1.26.4   # already in venv; required for feature extraction and MLP
+matplotlib>=3.7  # for evaluation plots (graceful fallback if missing)
+# Note: scikit-learn and scipy are NOT required for inference (pure-NumPy MLP).
+# Install them only if you want to extend with sklearn models:
+# scikit-learn>=1.3.0
+# scipy>=1.11.0
