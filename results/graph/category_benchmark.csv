@@ -1,0 +1,7 @@
+category,turns_count,mean_confidence,semantic_continuity,intent_refinement,non_adjacent_relevance,composite_risk,latency_ms,peak_memory_kb
+consistent_intent,3,0.8631,0.8717,0.0,0.86,0.0,38.19,23.87
+gradual_refinement,4,0.776,0.774,0.9436,0.7635,0.1333,66.06,32.82
+unrelated_intervening,4,0.7679,0.7729,0.9876,0.7871,0.0792,86.83,33.52
+semantic_paraphrases,3,0.7817,0.7657,0.9451,0.7674,0.0,33.72,24.23
+legitimate_topic_change,3,0.7671,0.7722,0.0,0.7968,0.0,35.48,21.99
+ambiguous_incomplete_messages,4,0.8635,0.9293,0.0,0.98,0.6003,46.74,30.2

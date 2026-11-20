@@ -43,12 +43,16 @@ class RiskCalculator:
         self.beta = beta if beta is not None else self.config.risk.weights.beta
         self.gamma = gamma if gamma is not None else self.config.risk.weights.gamma
 
-        # --- Adaptive mode ---
+        # --- Risk mode: fixed | adaptive | graph | combined ---
         self._risk_mode: str = getattr(self.config, "risk_mode", "fixed")
         self._adaptive_learner = None  # lazy-loaded
         self._adaptive_model_path: str = getattr(self.config, "adaptive_model_path", "tca/models/adaptive_weights.json")
-        if self._risk_mode == "adaptive":
+        if self._risk_mode in ("adaptive", "combined", "adaptive_graph"):
             self._load_adaptive_learner()
+
+        # Novelty 2: Graph settings
+        self.graph_config = getattr(self.config, "graph", None)
+        self.graph_weight: float = getattr(self.graph_config, "graph_weight", 0.25) if self.graph_config else 0.25
 
     # ------------------------------------------------------------------ #
     # Adaptive mode helpers                                              #
@@ -145,19 +149,26 @@ class RiskCalculator:
         intent_shift_detected: bool = False,
         intent_shift_risk_level: int = 1,
         domain_shift_detected: bool = False,
+        # --- novelty 2 graph risk (optional) ---
+        scaled_graph_risk: float = 0.0,
     ):
         """
         Calculate the progressive risk score for the current step.
 
-        In 'fixed' mode (default):
-            R_t = α*R_(t-1) + β*I_t + γ*P_t  with static α, β, γ from config.
+        In 'fixed' mode (original TCA):
+            R_t = α*R_(t-1) + β*I_t + γ*P_t with static α, β, γ from config.
 
-        In 'adaptive' mode:
+        In 'adaptive' mode (Novelty 1):
             α_t, β_t, γ_t are predicted per-turn by the AdaptiveWeightLearner,
             then R_t = α_t*R_(t-1) + β_t*I_t + γ_t*P_t.
 
-        The extra keyword arguments (turn_index, prev_interaction_risk, …) are
-        only used in adaptive mode; they can be safely omitted in fixed mode.
+        In 'graph' mode (Novelty 2):
+            R_base = α*R_(t-1) + β*I_t + γ*P_t
+            R_t = (1 - δ)*R_base + δ*(scaled_graph_risk)
+
+        In 'combined' mode (Novelty 1 + Novelty 2):
+            R_base = α_t*R_(t-1) + β_t*I_t + γ_t*P_t (adaptive)
+            R_t = (1 - δ)*R_base + δ*(scaled_graph_risk)
 
         Args:
             historical_risk (float): R_(t-1).
@@ -170,11 +181,15 @@ class RiskCalculator:
             intent_shift_detected (bool): From LLM intent analysis (adaptive mode).
             intent_shift_risk_level (int): From LLM intent analysis (adaptive mode).
             domain_shift_detected (bool): From pattern detection (adaptive mode).
+            scaled_graph_risk (float): 5.0 * G_t from Intent Evolution Graph (scale [0, 5]).
 
         Returns:
             float: The progressive risk score R_t.
         """
-        if self._risk_mode == "adaptive" and self._adaptive_learner is not None:
+        is_adaptive = self._risk_mode in ("adaptive", "combined", "adaptive_graph") and self._adaptive_learner is not None
+        use_graph = self._risk_mode in ("graph", "combined", "adaptive_graph")
+
+        if is_adaptive:
             alpha, beta, gamma = self._get_adaptive_weights(
                 interaction_risk=interaction_risk,
                 pattern_risk=pattern_risk,
@@ -186,22 +201,39 @@ class RiskCalculator:
                 intent_shift_risk_level=intent_shift_risk_level,
                 domain_shift_detected=domain_shift_detected,
             )
-            mode_label = "ADAPTIVE"
+            mode_label = "COMBINED (ADAPTIVE+GRAPH)" if use_graph else "ADAPTIVE"
         else:
             alpha, beta, gamma = self.alpha, self.beta, self.gamma
-            mode_label = "FIXED"
+            mode_label = "GRAPH" if use_graph else "FIXED"
 
-        progressive_risk = (
+        base_risk = (
             alpha * historical_risk
             + beta * interaction_risk
             + gamma * pattern_risk
         )
+
+        if use_graph:
+            delta = self.graph_weight
+            g_t = max(0.0, min(1.0, scaled_graph_risk / 5.0))
+            # Bounded residual risk escalation: R_t = R_base + δ * (5.0 - R_base) * G_t
+            # Guarantees R_t in [0, 5], perfectly preserves base risk when G_t = 0,
+            # and escalates aggressively when multi-turn attack progression is detected.
+            headroom = max(0.0, 5.0 - base_risk)
+            progressive_risk = base_risk + delta * headroom * g_t
+        else:
+            progressive_risk = base_risk
+
         self.historical_risk = progressive_risk  # Update historical risk
 
         # Print calculation details
         print("\n" + "=" * 40)
         print(f"Progressive Risk Calculation [{mode_label}]:")
-        print("R_t = α*R_(t-1) + β*I_t + γ*P_t")
+        if use_graph:
+            print(f"R_t = (1 - δ)*R_base + δ*(5.0*G_t)  [δ = {self.graph_weight:.2f}]")
+            print(f"  Base Progressive Risk: {base_risk:.4f}")
+            print(f"  Scaled Graph Risk (5.0*G_t): {scaled_graph_risk:.4f}")
+        else:
+            print("R_t = α*R_(t-1) + β*I_t + γ*P_t")
         print(f"  Weights — α: {alpha:.4f}, β: {beta:.4f}, γ: {gamma:.4f}")
         print(f"  Historical Risk  (α * {historical_risk:.4f}): {alpha * historical_risk:.4f}")
         print(f"  Interaction Risk (β * {interaction_risk:.4f}): {beta * interaction_risk:.4f}")

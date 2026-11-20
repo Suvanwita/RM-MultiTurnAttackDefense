@@ -11,6 +11,12 @@ from dataset.dataset_manager import DatasetManager
 from dotenv import load_dotenv, find_dotenv
 from tca.security_engine import SecurityDecisionEngine
 
+# Novelty 2: Intent Evolution Graph
+from intent.intent_extractor import IntentExtractor, TurnIntent
+from graph.intent_graph import IntentEvolutionGraph
+from graph.relationship_detector import RelationshipDetector
+from graph.graph_risk_analyzer import GraphRiskAnalyzer, GraphTurnAnalysis
+
 
 class ConversationAnalyzer:
     def __init__(self, config_path="config/config.yaml", llm_type="gpt"):
@@ -23,6 +29,26 @@ class ConversationAnalyzer:
         self.risk_calculator = RiskCalculator(config=self.config)
         self.decision_engine = SecurityDecisionEngine(config=self.config)
         self.historical_risk = 0  # Initialize historical risk
+
+        # Novelty 2: Intent Evolution Graph initialization
+        self.intent_extractor = IntentExtractor(
+            use_llm=False,
+            llm_manager=self.llm_manager,
+            llm_type=self.llm_type,
+        )
+        graph_cfg = getattr(self.config, "graph", None)
+        sim_th = getattr(graph_cfg, "similarity_threshold", 0.35) if graph_cfg else 0.35
+        self.relationship_detector = RelationshipDetector(similarity_threshold=sim_th)
+        self.graph_analyzer = GraphRiskAnalyzer(
+            weight_escalation=getattr(graph_cfg, "escalation_weight", 0.30) if graph_cfg else 0.30,
+            weight_dependency=getattr(graph_cfg, "dependency_weight", 0.20) if graph_cfg else 0.20,
+            weight_reframing=getattr(graph_cfg, "reframing_weight", 0.15) if graph_cfg else 0.15,
+            weight_suspicious=getattr(graph_cfg, "suspicious_weight", 0.15) if graph_cfg else 0.15,
+            weight_progression=getattr(graph_cfg, "progression_weight", 0.10) if graph_cfg else 0.10,
+            weight_contradiction=getattr(graph_cfg, "contradiction_weight", 0.10) if graph_cfg else 0.10,
+        )
+        self.intent_graph = IntentEvolutionGraph()
+        self._intent_history = []
 
     def clean_and_parse_content(self, content):
         """
@@ -50,6 +76,9 @@ class ConversationAnalyzer:
         # Adaptive-mode context state (reset per conversation)
         self._prev_interaction_risk = 0.0
         self._turn_index = 0
+        # Novelty 2: Reset Intent Evolution Graph per conversation
+        self.intent_graph = IntentEvolutionGraph(conversation_id=f"row_{idx + 1}")
+        self._intent_history = []
 
         for i in range(1, len(conversation_pairs)):
             prev_pair = conversation_pairs[i - 1]
@@ -145,6 +174,36 @@ class ConversationAnalyzer:
         prev_human = str(prev_pair[1]) if prev_pair and len(prev_pair) > 1 else ""
         cur_human = str(current_pair[1]) if current_pair and len(current_pair) > 1 else ""
 
+        # Novelty 2: Intent Evolution Graph incremental update
+        turn_num = turn_index + 1
+        current_intent = self.intent_extractor.extract_from_text(turn_num, cur_human)
+        self.intent_graph.add_turn(current_intent, text=cur_human)
+        detected_rels = self.relationship_detector.detect_all_relationships(current_intent, self._intent_history)
+        for rel in detected_rels:
+            self.intent_graph.add_evolution_edge(
+                rel.source_turn,
+                rel.target_turn,
+                rel.relationship_type,
+                rel.confidence,
+                rel.evidence,
+            )
+        graph_analysis = self.graph_analyzer.analyze_turn(self.intent_graph, turn_num)
+        scaled_graph_risk = graph_analysis.features.scaled_graph_risk
+        self._intent_history.append(current_intent)
+
+        # Log Graph features
+        if graph_analysis.features.composite_graph_risk > 0.0 or detected_rels:
+            print("\nIntent Evolution Graph Analysis:")
+            print(f"  Turn Intent: {current_intent.intent} [Action: {current_intent.requested_action}, Target: {current_intent.target}]")
+            print(f"  Composite Graph Risk (G_t): {graph_analysis.features.composite_graph_risk:.4f} (Scaled [0-5]: {scaled_graph_risk:.4f})")
+            print(f"  Escalation Score: {graph_analysis.features.intent_escalation_score:.4f} | Dependency: {graph_analysis.features.cross_turn_dependency_score:.4f}")
+            print(f"  Suspicious Conf: {graph_analysis.features.suspicious_relationship_confidence:.4f} | Reframing: {graph_analysis.features.reframing_frequency:.4f}")
+            print(f"  Explanation: {graph_analysis.explanation}")
+            if detected_rels:
+                print("  Discovered Relationships:")
+                for r in detected_rels:
+                    print(f"    - Turn {r.source_turn} -> Turn {r.target_turn}: {r.relationship_type} (conf={r.confidence:.2f})")
+
         progressive_risk = self.risk_calculator.calculate_progressive_risk(
             self.historical_risk,
             interaction_risk,
@@ -157,6 +216,8 @@ class ConversationAnalyzer:
             intent_shift_detected=intent_shift_detected,
             intent_shift_risk_level=intent_shift_risk_level,
             domain_shift_detected=domain_shift_detected,
+            # Novelty 2: Intent Evolution Graph risk
+            scaled_graph_risk=scaled_graph_risk,
         )
         self.historical_risk = progressive_risk  # Update historical risk
         # Advance per-conversation turn state

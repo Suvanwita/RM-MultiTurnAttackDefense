@@ -89,6 +89,35 @@ class RiskConfig:
         print(f"  Block Threshold: {self.block_threshold}")
 
 
+class GraphConfig:
+    def __init__(self):
+        self.enabled = True
+        self.graph_weight = 0.25
+        self.escalation_weight = 0.30
+        self.dependency_weight = 0.20
+        self.reframing_weight = 0.15
+        self.suspicious_weight = 0.15
+        self.progression_weight = 0.10
+        self.contradiction_weight = 0.10
+        self.similarity_threshold = 0.35
+        self.max_history_turns = 10
+
+    def load_from_dict(self, data: dict):
+        if not data:
+            return self
+        self.enabled = bool(data.get("enabled", True))
+        self.graph_weight = float(data.get("graph_weight", 0.25))
+        self.escalation_weight = float(data.get("escalation_weight", 0.30))
+        self.dependency_weight = float(data.get("dependency_weight", 0.20))
+        self.reframing_weight = float(data.get("reframing_weight", 0.15))
+        self.suspicious_weight = float(data.get("suspicious_weight", 0.15))
+        self.progression_weight = float(data.get("progression_weight", 0.10))
+        self.contradiction_weight = float(data.get("contradiction_weight", 0.10))
+        self.similarity_threshold = float(data.get("similarity_threshold", 0.35))
+        self.max_history_turns = int(data.get("max_history_turns", 10))
+        return self
+
+
 class TCAConfig:
     def __init__(self, config_path: str):
         try:
@@ -98,11 +127,13 @@ class TCAConfig:
                 self.file_path = data["file_path"]
                 self.log_level = data.get("log_level", "INFO")
                 self.gcp_project_id = data.get("gcp_project_id", None)
-                # Novelty 1: Adaptive Contextual Risk Learning
-                self.risk_mode = data.get("risk_mode", "fixed")  # "fixed" | "adaptive"
+                # Risk modes: fixed | adaptive | graph | combined
+                self.risk_mode = data.get("risk_mode", "fixed")
                 self.adaptive_model_path = data.get(
                     "adaptive_model_path", "tca/models/adaptive_weights.json"
                 )
+                # Novelty 2: Intent Evolution Graph
+                self.graph = GraphConfig().load_from_dict(data.get("graph", {}))
 
             # Validate weights after loading
             self.risk.validate_weights()

@@ -18,12 +18,29 @@ file_path: "dataset/harmbench_behaviors.csv"
 gcp_project_id: "pk-arg-prj4-datasci"
 
 # -----------------------------------------------------------------------
-# Novelty 1: Adaptive Contextual Risk Learning
+# Risk Mode Configuration
 # -----------------------------------------------------------------------
 # risk_mode: fixed    — use static α, β, γ from risk.weights (original TCA)
-# risk_mode: adaptive — predict per-turn weights via AdaptiveWeightLearner
+# risk_mode: adaptive — Novelty 1: predict per-turn weights via AdaptiveWeightLearner
+# risk_mode: graph    — Novelty 2: TCA + Intent Evolution Graph risk
+# risk_mode: combined — TCA + Novelty 1 (Adaptive) + Novelty 2 (Intent Graph)
 risk_mode: fixed
 
-# Path to the trained adaptive model (JSON). Only used when risk_mode: adaptive.
+# Path to the trained adaptive model (JSON). Only used when risk_mode: adaptive or combined.
 # Train with:  python3 -m tca.train_adaptive --output tca/models/adaptive_weights.json
 adaptive_model_path: "tca/models/adaptive_weights.json"
+
+# -----------------------------------------------------------------------
+# Novelty 2: Intent Evolution Graph
+# -----------------------------------------------------------------------
+graph:
+  enabled: true
+  graph_weight: 0.25          # δ in [0, 1]: weight of graph risk in fused progressive risk
+  escalation_weight: 0.30     # Weight for intent escalation score
+  dependency_weight: 0.20     # Weight for cross-turn dependency score
+  reframing_weight: 0.15      # Weight for reframing frequency
+  suspicious_weight: 0.15     # Weight for suspicious relationship confidence
+  progression_weight: 0.10    # Weight for intent progression score
+  contradiction_weight: 0.10  # Weight for contradiction indicators
+  similarity_threshold: 0.35  # Semantic similarity threshold
+  max_history_turns: 10       # History evaluation window
