@@ -26,6 +26,9 @@ from graph.graph_risk_analyzer import GraphRiskAnalyzer, GraphTurnAnalysis
 # Novelty 1: Counterfactual Trajectory Probing (CTP)
 from tca.counterfactual_prober import CounterfactualTrajectoryProber, CTPProbeResult
 
+# Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
+from tca.taint_virtualizer import CrossTurnTaintVirtualizer, VirtualPayloadResult
+
 
 class ConversationAnalyzer:
     def __init__(self, config_path="config/config.yaml", llm_type="gpt"):
@@ -63,6 +66,9 @@ class ConversationAnalyzer:
         self.ctp_prober = CounterfactualTrajectoryProber(config=self.config, llm_manager=self.llm_manager)
         self._ctp_history = []
 
+        # Novelty 2: Cross-Turn Symbolic Taint Virtualizer
+        self.taint_virtualizer = CrossTurnTaintVirtualizer(config=self.config)
+
     def clean_and_parse_content(self, content):
         """
         Cleans Markdown formatting and parses the content field as JSON.
@@ -95,6 +101,8 @@ class ConversationAnalyzer:
         # Novelty 1: Reset CTP prober per conversation
         self.ctp_prober.reset()
         self._ctp_history = []
+        # Novelty 2: Reset CT-STV taint virtualizer per conversation
+        self.taint_virtualizer.reset()
 
         for i in range(1, len(conversation_pairs)):
             prev_pair = conversation_pairs[i - 1]
@@ -211,6 +219,18 @@ class ConversationAnalyzer:
             print(f"  Adversarial Crescendo: {ctp_result.is_adversarial_crescendo} | Preemptive Block: {ctp_result.trigger_preemptive_block}")
             print(f"  Explanation: {ctp_result.explanation}")
 
+        # Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
+        ctstv_result = self.taint_virtualizer.evaluate_turn(turn_id=turn_num, user_text=cur_human)
+        scaled_ctstv_risk = ctstv_result.scaled_ctstv_risk
+
+        if ctstv_result.is_assembled or ctstv_result.is_split_injection or ctstv_result.ssim_score > 0.20:
+            print("\nCross-Turn Symbolic Taint Virtualization (CT-STV) Analysis:")
+            print(f"  Referenced Fragments: {ctstv_result.referenced_identifiers}")
+            print(f"  Materialized Payload: '{ctstv_result.materialized_payload[:100]}...'")
+            print(f"  SSIM Score: {ctstv_result.ssim_score:.4f} (Scaled [0-5]: {scaled_ctstv_risk:.4f})")
+            print(f"  Split Injection: {ctstv_result.is_split_injection} | Preemptive Block: {ctstv_result.trigger_preemptive_block}")
+            print(f"  Explanation: {ctstv_result.explanation}")
+
         # Intent Evolution Graph incremental update
         current_intent = self.intent_extractor.extract_from_text(turn_num, cur_human)
         self.intent_graph.add_turn(current_intent, text=cur_human)
@@ -256,6 +276,8 @@ class ConversationAnalyzer:
             scaled_graph_risk=scaled_graph_risk,
             # CTP risk
             scaled_ctp_risk=scaled_ctp_risk,
+            # CT-STV risk
+            scaled_ctstv_risk=scaled_ctstv_risk,
         )
         self.historical_risk = progressive_risk  # Update historical risk
         # Advance per-conversation turn state
@@ -268,6 +290,8 @@ class ConversationAnalyzer:
             self.historical_risk,
             ctp_preemptive_block=ctp_result.trigger_preemptive_block,
             ctp_reasoning=ctp_result.explanation,
+            ctstv_preemptive_block=ctstv_result.trigger_preemptive_block,
+            ctstv_reasoning=ctstv_result.explanation,
         )
         print("\n" + "-" * 80)
         print("\nRisk Analysis Results:")

@@ -24,6 +24,8 @@ class SecurityDecisionEngine:
         historical_risk: float,
         ctp_preemptive_block: bool = False,
         ctp_reasoning: str = "",
+        ctstv_preemptive_block: bool = False,
+        ctstv_reasoning: str = "",
     ) -> dict:
         """
         Evaluate risk levels and make a security decision.
@@ -33,10 +35,23 @@ class SecurityDecisionEngine:
             historical_risk (float): The historical risk score from previous interactions.
             ctp_preemptive_block (bool): Whether CTP detected an adversarial crescendo requiring early blocking.
             ctp_reasoning (str): Explanation from the CTP probe if triggered.
+            ctstv_preemptive_block (bool): Whether CT-STV detected an assembled split injection payload.
+            ctstv_reasoning (str): Explanation from CT-STV if triggered.
 
         Returns:
             dict: A dictionary containing the decision and additional metadata.
         """
+        if ctstv_preemptive_block:
+            return self._make_decision(
+                decision="block",
+                progressive_risk=max(progressive_risk, self.block_threshold),
+                historical_risk=historical_risk,
+                message="Interaction preemptively blocked by Cross-Turn Symbolic Taint Virtualization (CT-STV).",
+                reasoning=(
+                    ctstv_reasoning or "CT-STV detected and materialized a forbidden split-payload injection across turns."
+                ),
+            )
+
         if ctp_preemptive_block:
             return self._make_decision(
                 decision="block",

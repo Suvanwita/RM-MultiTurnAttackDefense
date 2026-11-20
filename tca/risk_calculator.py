@@ -58,6 +58,10 @@ class RiskCalculator:
         self.ctp_config = getattr(self.config, "ctp", None)
         self.ctp_weight: float = getattr(self.ctp_config, "ctp_weight", 0.30) if self.ctp_config else 0.30
 
+        # Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV) settings
+        self.ctstv_config = getattr(self.config, "ctstv", None)
+        self.ctstv_weight: float = getattr(self.ctstv_config, "ctstv_weight", 0.35) if self.ctstv_config else 0.35
+
     # ------------------------------------------------------------------ #
     # Adaptive mode helpers                                              #
     # ------------------------------------------------------------------ #
@@ -157,6 +161,8 @@ class RiskCalculator:
         scaled_graph_risk: float = 0.0,
         # --- novelty 1 ctp risk (optional) ---
         scaled_ctp_risk: float = 0.0,
+        # --- novelty 2 ctstv risk (optional) ---
+        scaled_ctstv_risk: float = 0.0,
     ):
         """
         Calculate the progressive risk score for the current step.
@@ -176,12 +182,17 @@ class RiskCalculator:
             R_base = α*R_(t-1) + β*I_t + γ*P_t
             R_t = R_base + λ_ctp * (5.0 - R_base) * CTP_t
 
+        In 'ctstv' mode (Novelty 2):
+            R_base = α*R_(t-1) + β*I_t + γ*P_t
+            R_t = R_base + λ_ctstv * (5.0 - R_base) * CTSTV_t
+
         In 'combined' mode:
-            Fuses adaptive weights, graph structural risk, and CTP prober risk.
+            Fuses adaptive weights, graph structural risk, CTP prober risk, and CT-STV taint risk.
         """
         is_adaptive = self._risk_mode in ("adaptive", "combined", "adaptive_graph") and self._adaptive_learner is not None
         use_graph = self._risk_mode in ("graph", "combined", "adaptive_graph")
         use_ctp = self._risk_mode in ("ctp", "combined")
+        use_ctstv = self._risk_mode in ("ctstv", "combined")
 
         if is_adaptive:
             alpha, beta, gamma = self._get_adaptive_weights(
@@ -195,10 +206,11 @@ class RiskCalculator:
                 intent_shift_risk_level=intent_shift_risk_level,
                 domain_shift_detected=domain_shift_detected,
             )
-            mode_label = "COMBINED" if (use_graph or use_ctp) else "ADAPTIVE"
+            mode_label = "COMBINED" if (use_graph or use_ctp or use_ctstv) else "ADAPTIVE"
         else:
             alpha, beta, gamma = self.alpha, self.beta, self.gamma
-            mode_label = "COMBINED" if (use_graph and use_ctp) else ("CTP" if use_ctp else ("GRAPH" if use_graph else "FIXED"))
+            active_modes = [m for m, u in [("GRAPH", use_graph), ("CTP", use_ctp), ("CTSTV", use_ctstv)] if u]
+            mode_label = "+".join(active_modes) if active_modes else "FIXED"
 
         base_risk = (
             alpha * historical_risk
@@ -220,6 +232,12 @@ class RiskCalculator:
             headroom = max(0.0, 5.0 - progressive_risk)
             progressive_risk = progressive_risk + lambda_ctp * headroom * c_t
 
+        if use_ctstv and scaled_ctstv_risk > 0.0:
+            lambda_ctstv = self.ctstv_weight
+            s_t = max(0.0, min(1.0, scaled_ctstv_risk / 5.0))
+            headroom = max(0.0, 5.0 - progressive_risk)
+            progressive_risk = progressive_risk + lambda_ctstv * headroom * s_t
+
         self.historical_risk = progressive_risk  # Update historical risk
 
         # Print calculation details
@@ -229,6 +247,8 @@ class RiskCalculator:
             print(f"  Graph Escalation (δ = {self.graph_weight:.2f}, Scaled Risk = {scaled_graph_risk:.4f})")
         if use_ctp and scaled_ctp_risk > 0.0:
             print(f"  CTP Escalation (λ_ctp = {self.ctp_weight:.2f}, Scaled Risk = {scaled_ctp_risk:.4f})")
+        if use_ctstv and scaled_ctstv_risk > 0.0:
+            print(f"  CT-STV Escalation (λ_ctstv = {self.ctstv_weight:.2f}, Scaled Risk = {scaled_ctstv_risk:.4f})")
         print(f"  Base Progressive Risk: {base_risk:.4f}")
         print(f"  Weights — α: {alpha:.4f}, β: {beta:.4f}, γ: {gamma:.4f}")
         print(f"  Historical Risk  (α * {historical_risk:.4f}): {alpha * historical_risk:.4f}")

@@ -118,6 +118,29 @@ class CTPConfig:
         return self
 
 
+class CTSTVConfig:
+    def __init__(self):
+        self.enabled = True
+        self.ctstv_weight = 0.35
+        self.ssim_threshold = 0.50
+        self.block_threshold = 0.70
+        self.warn_threshold = 0.40
+        self.proactive_blocking = True
+        self.max_taint_depth = 10
+
+    def load_from_dict(self, data: dict):
+        if not data:
+            return self
+        self.enabled = bool(data.get("enabled", True))
+        self.ctstv_weight = float(data.get("ctstv_weight", 0.35))
+        self.ssim_threshold = float(data.get("ssim_threshold", 0.50))
+        self.block_threshold = float(data.get("block_threshold", 0.70))
+        self.warn_threshold = float(data.get("warn_threshold", 0.40))
+        self.proactive_blocking = bool(data.get("proactive_blocking", True))
+        self.max_taint_depth = int(data.get("max_taint_depth", 10))
+        return self
+
+
 class GraphConfig:
     def __init__(self):
         self.enabled = True
@@ -165,6 +188,8 @@ class TCAConfig:
                 self.graph = GraphConfig().load_from_dict(data.get("graph", {}))
                 # Novelty 1: Counterfactual Trajectory Prober (CTP)
                 self.ctp = CTPConfig().load_from_dict(data.get("ctp", {}))
+                # Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
+                self.ctstv = CTSTVConfig().load_from_dict(data.get("ctstv", {}))
 
             # Validate weights after loading
             self.risk.validate_weights()

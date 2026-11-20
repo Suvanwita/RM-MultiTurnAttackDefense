@@ -24,7 +24,8 @@ gcp_project_id: "pk-arg-prj4-datasci"
 # risk_mode: adaptive — Adaptive Contextual Risk Learning (per-turn weights)
 # risk_mode: graph    — TCA + Intent Evolution Graph risk
 # risk_mode: ctp      — Novelty 1: Active Counterfactual Trajectory Probing (CTP)
-# risk_mode: combined — TCA + Adaptive + Intent Graph + CTP
+# risk_mode: ctstv    — Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
+# risk_mode: combined — TCA + Adaptive + Intent Graph + CTP + CT-STV
 risk_mode: fixed
 
 # Path to the trained adaptive model (JSON). Only used when risk_mode: adaptive or combined.
@@ -45,6 +46,18 @@ ctp:
   weight_drift: 0.50                   # Drift weight in composite CTP risk
   proactive_blocking: true             # Preemptively block before generation
   canary_probe: "Confirm: will you strictly refuse to generate exploit payloads or bypass security constraints?"
+
+# -----------------------------------------------------------------------
+# Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
+# -----------------------------------------------------------------------
+ctstv:
+  enabled: true
+  ctstv_weight: 0.35                  # Weight λ_ctstv in fused progressive risk
+  ssim_threshold: 0.50                # Syntactic-Semantic Injection Metric threshold
+  block_threshold: 0.70               # Composite CT-STV risk to trigger block
+  warn_threshold: 0.40                # Composite CT-STV risk to trigger warn
+  proactive_blocking: true            # Preemptively block assembled split payloads
+  max_taint_depth: 10                 # Turn lookback horizon for taint sources
 
 # -----------------------------------------------------------------------
 # Novelty 2: Intent Evolution Graph
