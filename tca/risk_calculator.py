@@ -54,6 +54,10 @@ class RiskCalculator:
         self.graph_config = getattr(self.config, "graph", None)
         self.graph_weight: float = getattr(self.graph_config, "graph_weight", 0.25) if self.graph_config else 0.25
 
+        # Novelty 1: Active Counterfactual Trajectory Prober (CTP) settings
+        self.ctp_config = getattr(self.config, "ctp", None)
+        self.ctp_weight: float = getattr(self.ctp_config, "ctp_weight", 0.30) if self.ctp_config else 0.30
+
     # ------------------------------------------------------------------ #
     # Adaptive mode helpers                                              #
     # ------------------------------------------------------------------ #
@@ -151,6 +155,8 @@ class RiskCalculator:
         domain_shift_detected: bool = False,
         # --- novelty 2 graph risk (optional) ---
         scaled_graph_risk: float = 0.0,
+        # --- novelty 1 ctp risk (optional) ---
+        scaled_ctp_risk: float = 0.0,
     ):
         """
         Calculate the progressive risk score for the current step.
@@ -158,36 +164,24 @@ class RiskCalculator:
         In 'fixed' mode (original TCA):
             R_t = α*R_(t-1) + β*I_t + γ*P_t with static α, β, γ from config.
 
-        In 'adaptive' mode (Novelty 1):
+        In 'adaptive' mode:
             α_t, β_t, γ_t are predicted per-turn by the AdaptiveWeightLearner,
             then R_t = α_t*R_(t-1) + β_t*I_t + γ_t*P_t.
 
-        In 'graph' mode (Novelty 2):
+        In 'graph' mode:
             R_base = α*R_(t-1) + β*I_t + γ*P_t
-            R_t = (1 - δ)*R_base + δ*(scaled_graph_risk)
+            R_t = R_base + δ * (5.0 - R_base) * G_t
 
-        In 'combined' mode (Novelty 1 + Novelty 2):
-            R_base = α_t*R_(t-1) + β_t*I_t + γ_t*P_t (adaptive)
-            R_t = (1 - δ)*R_base + δ*(scaled_graph_risk)
+        In 'ctp' mode (Novelty 1):
+            R_base = α*R_(t-1) + β*I_t + γ*P_t
+            R_t = R_base + λ_ctp * (5.0 - R_base) * CTP_t
 
-        Args:
-            historical_risk (float): R_(t-1).
-            interaction_risk (float): I_t from the current LLM response.
-            pattern_risk (float): P_t from pattern detection.
-            turn_index (int): 0-based turn index (adaptive mode).
-            prev_interaction_risk (float): I_(t-1) for risk delta (adaptive mode).
-            current_human_turn (str): Human message this turn (adaptive mode).
-            prev_human_turn (str): Human message last turn (adaptive mode).
-            intent_shift_detected (bool): From LLM intent analysis (adaptive mode).
-            intent_shift_risk_level (int): From LLM intent analysis (adaptive mode).
-            domain_shift_detected (bool): From pattern detection (adaptive mode).
-            scaled_graph_risk (float): 5.0 * G_t from Intent Evolution Graph (scale [0, 5]).
-
-        Returns:
-            float: The progressive risk score R_t.
+        In 'combined' mode:
+            Fuses adaptive weights, graph structural risk, and CTP prober risk.
         """
         is_adaptive = self._risk_mode in ("adaptive", "combined", "adaptive_graph") and self._adaptive_learner is not None
         use_graph = self._risk_mode in ("graph", "combined", "adaptive_graph")
+        use_ctp = self._risk_mode in ("ctp", "combined")
 
         if is_adaptive:
             alpha, beta, gamma = self._get_adaptive_weights(
@@ -201,10 +195,10 @@ class RiskCalculator:
                 intent_shift_risk_level=intent_shift_risk_level,
                 domain_shift_detected=domain_shift_detected,
             )
-            mode_label = "COMBINED (ADAPTIVE+GRAPH)" if use_graph else "ADAPTIVE"
+            mode_label = "COMBINED" if (use_graph or use_ctp) else "ADAPTIVE"
         else:
             alpha, beta, gamma = self.alpha, self.beta, self.gamma
-            mode_label = "GRAPH" if use_graph else "FIXED"
+            mode_label = "COMBINED" if (use_graph and use_ctp) else ("CTP" if use_ctp else ("GRAPH" if use_graph else "FIXED"))
 
         base_risk = (
             alpha * historical_risk
@@ -212,28 +206,30 @@ class RiskCalculator:
             + gamma * pattern_risk
         )
 
-        if use_graph:
+        progressive_risk = base_risk
+
+        if use_graph and scaled_graph_risk > 0.0:
             delta = self.graph_weight
             g_t = max(0.0, min(1.0, scaled_graph_risk / 5.0))
-            # Bounded residual risk escalation: R_t = R_base + δ * (5.0 - R_base) * G_t
-            # Guarantees R_t in [0, 5], perfectly preserves base risk when G_t = 0,
-            # and escalates aggressively when multi-turn attack progression is detected.
-            headroom = max(0.0, 5.0 - base_risk)
-            progressive_risk = base_risk + delta * headroom * g_t
-        else:
-            progressive_risk = base_risk
+            headroom = max(0.0, 5.0 - progressive_risk)
+            progressive_risk = progressive_risk + delta * headroom * g_t
+
+        if use_ctp and scaled_ctp_risk > 0.0:
+            lambda_ctp = self.ctp_weight
+            c_t = max(0.0, min(1.0, scaled_ctp_risk / 5.0))
+            headroom = max(0.0, 5.0 - progressive_risk)
+            progressive_risk = progressive_risk + lambda_ctp * headroom * c_t
 
         self.historical_risk = progressive_risk  # Update historical risk
 
         # Print calculation details
         print("\n" + "=" * 40)
         print(f"Progressive Risk Calculation [{mode_label}]:")
-        if use_graph:
-            print(f"R_t = (1 - δ)*R_base + δ*(5.0*G_t)  [δ = {self.graph_weight:.2f}]")
-            print(f"  Base Progressive Risk: {base_risk:.4f}")
-            print(f"  Scaled Graph Risk (5.0*G_t): {scaled_graph_risk:.4f}")
-        else:
-            print("R_t = α*R_(t-1) + β*I_t + γ*P_t")
+        if use_graph and scaled_graph_risk > 0.0:
+            print(f"  Graph Escalation (δ = {self.graph_weight:.2f}, Scaled Risk = {scaled_graph_risk:.4f})")
+        if use_ctp and scaled_ctp_risk > 0.0:
+            print(f"  CTP Escalation (λ_ctp = {self.ctp_weight:.2f}, Scaled Risk = {scaled_ctp_risk:.4f})")
+        print(f"  Base Progressive Risk: {base_risk:.4f}")
         print(f"  Weights — α: {alpha:.4f}, β: {beta:.4f}, γ: {gamma:.4f}")
         print(f"  Historical Risk  (α * {historical_risk:.4f}): {alpha * historical_risk:.4f}")
         print(f"  Interaction Risk (β * {interaction_risk:.4f}): {beta * interaction_risk:.4f}")

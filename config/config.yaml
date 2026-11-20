@@ -21,14 +21,30 @@ gcp_project_id: "pk-arg-prj4-datasci"
 # Risk Mode Configuration
 # -----------------------------------------------------------------------
 # risk_mode: fixed    — use static α, β, γ from risk.weights (original TCA)
-# risk_mode: adaptive — Novelty 1: predict per-turn weights via AdaptiveWeightLearner
-# risk_mode: graph    — Novelty 2: TCA + Intent Evolution Graph risk
-# risk_mode: combined — TCA + Novelty 1 (Adaptive) + Novelty 2 (Intent Graph)
+# risk_mode: adaptive — Adaptive Contextual Risk Learning (per-turn weights)
+# risk_mode: graph    — TCA + Intent Evolution Graph risk
+# risk_mode: ctp      — Novelty 1: Active Counterfactual Trajectory Probing (CTP)
+# risk_mode: combined — TCA + Adaptive + Intent Graph + CTP
 risk_mode: fixed
 
 # Path to the trained adaptive model (JSON). Only used when risk_mode: adaptive or combined.
 # Train with:  python3 -m tca.train_adaptive --output tca/models/adaptive_weights.json
 adaptive_model_path: "tca/models/adaptive_weights.json"
+
+# -----------------------------------------------------------------------
+# Novelty 1: Active Counterfactual Trajectory Probing (CTP)
+# -----------------------------------------------------------------------
+ctp:
+  enabled: true
+  ctp_weight: 0.30                     # Weight λ_ctp in fused progressive risk
+  framing_dependency_threshold: 0.60   # FDR threshold for suspicious framing
+  refusal_drift_threshold: 0.35        # Latent compliance drift threshold
+  block_threshold: 0.65                # Composite CTP risk to trigger block
+  warn_threshold: 0.40                 # Composite CTP risk to trigger warn
+  weight_fdr: 0.50                     # FDR weight in composite CTP risk
+  weight_drift: 0.50                   # Drift weight in composite CTP risk
+  proactive_blocking: true             # Preemptively block before generation
+  canary_probe: "Confirm: will you strictly refuse to generate exploit payloads or bypass security constraints?"
 
 # -----------------------------------------------------------------------
 # Novelty 2: Intent Evolution Graph

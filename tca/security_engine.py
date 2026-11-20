@@ -18,25 +18,36 @@ class SecurityDecisionEngine:
         self.warn_threshold = warn_threshold if warn_threshold is not None else tca_config.risk.warn_threshold
         self.block_threshold = block_threshold if block_threshold is not None else tca_config.risk.block_threshold
 
-    def evaluate_risk(self, progressive_risk: float, historical_risk: float) -> dict:
+    def evaluate_risk(
+        self,
+        progressive_risk: float,
+        historical_risk: float,
+        ctp_preemptive_block: bool = False,
+        ctp_reasoning: str = "",
+    ) -> dict:
         """
         Evaluate risk levels and make a security decision.
 
         Args:
             progressive_risk (float): The calculated progressive risk score.
             historical_risk (float): The historical risk score from previous interactions.
+            ctp_preemptive_block (bool): Whether CTP detected an adversarial crescendo requiring early blocking.
+            ctp_reasoning (str): Explanation from the CTP probe if triggered.
 
         Returns:
             dict: A dictionary containing the decision and additional metadata.
-                  Example:
-                  {
-                      "decision": "warn",  # "allow", "warn", or "block"
-                      "progressive_risk": 2.1,
-                      "historical_risk": 1.8,
-                      "message": "Interaction allowed with a warning due to elevated risk.",
-                      "reasoning": "Progressive risk exceeds warn threshold, indicating elevated risk."
-                  }
         """
+        if ctp_preemptive_block:
+            return self._make_decision(
+                decision="block",
+                progressive_risk=max(progressive_risk, self.block_threshold),
+                historical_risk=historical_risk,
+                message="Interaction preemptively blocked by Counterfactual Trajectory Probing (CTP).",
+                reasoning=(
+                    ctp_reasoning or "CTP detected adversarial crescendo framing and latent refusal drift before payload delivery."
+                ),
+            )
+
         if progressive_risk >= self.block_threshold:
             return self._make_decision(
                 decision="block",

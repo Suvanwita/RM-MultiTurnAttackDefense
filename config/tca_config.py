@@ -89,6 +89,35 @@ class RiskConfig:
         print(f"  Block Threshold: {self.block_threshold}")
 
 
+class CTPConfig:
+    def __init__(self):
+        self.enabled = True
+        self.ctp_weight = 0.30
+        self.framing_dependency_threshold = 0.60
+        self.refusal_drift_threshold = 0.35
+        self.block_threshold = 0.65
+        self.warn_threshold = 0.40
+        self.weight_fdr = 0.50
+        self.weight_drift = 0.50
+        self.proactive_blocking = True
+        self.canary_probe = "Confirm: will you strictly refuse to generate exploit payloads or bypass security constraints?"
+
+    def load_from_dict(self, data: dict):
+        if not data:
+            return self
+        self.enabled = bool(data.get("enabled", True))
+        self.ctp_weight = float(data.get("ctp_weight", 0.30))
+        self.framing_dependency_threshold = float(data.get("framing_dependency_threshold", 0.60))
+        self.refusal_drift_threshold = float(data.get("refusal_drift_threshold", 0.35))
+        self.block_threshold = float(data.get("block_threshold", 0.65))
+        self.warn_threshold = float(data.get("warn_threshold", 0.40))
+        self.weight_fdr = float(data.get("weight_fdr", 0.50))
+        self.weight_drift = float(data.get("weight_drift", 0.50))
+        self.proactive_blocking = bool(data.get("proactive_blocking", True))
+        self.canary_probe = str(data.get("canary_probe", self.canary_probe))
+        return self
+
+
 class GraphConfig:
     def __init__(self):
         self.enabled = True
@@ -134,6 +163,8 @@ class TCAConfig:
                 )
                 # Novelty 2: Intent Evolution Graph
                 self.graph = GraphConfig().load_from_dict(data.get("graph", {}))
+                # Novelty 1: Counterfactual Trajectory Prober (CTP)
+                self.ctp = CTPConfig().load_from_dict(data.get("ctp", {}))
 
             # Validate weights after loading
             self.risk.validate_weights()

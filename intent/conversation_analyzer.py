@@ -1,7 +1,13 @@
 import argparse
 import asyncio
 import os
+import sys
 import json
+
+# Ensure project root is in sys.path
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from prompts.prompt_templates import PromptManager
 from llms.llm_manager import LLMManager
@@ -11,11 +17,14 @@ from dataset.dataset_manager import DatasetManager
 from dotenv import load_dotenv, find_dotenv
 from tca.security_engine import SecurityDecisionEngine
 
-# Novelty 2: Intent Evolution Graph
+# Intent Evolution Graph
 from intent.intent_extractor import IntentExtractor, TurnIntent
 from graph.intent_graph import IntentEvolutionGraph
 from graph.relationship_detector import RelationshipDetector
 from graph.graph_risk_analyzer import GraphRiskAnalyzer, GraphTurnAnalysis
+
+# Novelty 1: Counterfactual Trajectory Probing (CTP)
+from tca.counterfactual_prober import CounterfactualTrajectoryProber, CTPProbeResult
 
 
 class ConversationAnalyzer:
@@ -30,7 +39,7 @@ class ConversationAnalyzer:
         self.decision_engine = SecurityDecisionEngine(config=self.config)
         self.historical_risk = 0  # Initialize historical risk
 
-        # Novelty 2: Intent Evolution Graph initialization
+        # Intent Evolution Graph initialization
         self.intent_extractor = IntentExtractor(
             use_llm=False,
             llm_manager=self.llm_manager,
@@ -49,6 +58,10 @@ class ConversationAnalyzer:
         )
         self.intent_graph = IntentEvolutionGraph()
         self._intent_history = []
+
+        # Novelty 1: Counterfactual Trajectory Prober
+        self.ctp_prober = CounterfactualTrajectoryProber(config=self.config, llm_manager=self.llm_manager)
+        self._ctp_history = []
 
     def clean_and_parse_content(self, content):
         """
@@ -76,9 +89,12 @@ class ConversationAnalyzer:
         # Adaptive-mode context state (reset per conversation)
         self._prev_interaction_risk = 0.0
         self._turn_index = 0
-        # Novelty 2: Reset Intent Evolution Graph per conversation
+        # Reset Intent Evolution Graph per conversation
         self.intent_graph = IntentEvolutionGraph(conversation_id=f"row_{idx + 1}")
         self._intent_history = []
+        # Novelty 1: Reset CTP prober per conversation
+        self.ctp_prober.reset()
+        self._ctp_history = []
 
         for i in range(1, len(conversation_pairs)):
             prev_pair = conversation_pairs[i - 1]
@@ -170,12 +186,32 @@ class ConversationAnalyzer:
         domain_shift_detected = bool(patterns.get("domain_shift", {}).get("detected", False))
         # Per-conversation turn tracking state (initialised in analyze_row)
         turn_index = getattr(self, "_turn_index", 0)
+        turn_num = turn_index + 1
         prev_ir = getattr(self, "_prev_interaction_risk", 0.0)
         prev_human = str(prev_pair[1]) if prev_pair and len(prev_pair) > 1 else ""
         cur_human = str(current_pair[1]) if current_pair and len(current_pair) > 1 else ""
 
-        # Novelty 2: Intent Evolution Graph incremental update
-        turn_num = turn_index + 1
+        # Novelty 1: Counterfactual Trajectory Probing (CTP)
+        ctp_result = self.ctp_prober.evaluate_turn(
+            turn_id=turn_num,
+            raw_text=cur_human,
+            prev_human=prev_human,
+            conversation_history=self._ctp_history,
+        )
+        self._ctp_history.append(cur_human)
+        scaled_ctp_risk = ctp_result.scaled_ctp_risk
+
+        if ctp_result.composite_ctp_risk > 0.15 or ctp_result.is_adversarial_crescendo:
+            print("\nCounterfactual Trajectory Probing (CTP) Analysis:")
+            print(f"  Turn {turn_num} Raw Text: {cur_human[:80]}...")
+            print(f"  Neutralized Directive: {ctp_result.neutralized_text[:80]}...")
+            print(f"  Framing Dependency Ratio (FDR): {ctp_result.framing_dependency_ratio:.4f}")
+            print(f"  Refusal Drift: {ctp_result.refusal_drift:.4f} (Status: {ctp_result.canary_response_status})")
+            print(f"  Composite CTP Risk: {ctp_result.composite_ctp_risk:.4f} (Scaled [0-5]: {scaled_ctp_risk:.4f})")
+            print(f"  Adversarial Crescendo: {ctp_result.is_adversarial_crescendo} | Preemptive Block: {ctp_result.trigger_preemptive_block}")
+            print(f"  Explanation: {ctp_result.explanation}")
+
+        # Intent Evolution Graph incremental update
         current_intent = self.intent_extractor.extract_from_text(turn_num, cur_human)
         self.intent_graph.add_turn(current_intent, text=cur_human)
         detected_rels = self.relationship_detector.detect_all_relationships(current_intent, self._intent_history)
@@ -216,8 +252,10 @@ class ConversationAnalyzer:
             intent_shift_detected=intent_shift_detected,
             intent_shift_risk_level=intent_shift_risk_level,
             domain_shift_detected=domain_shift_detected,
-            # Novelty 2: Intent Evolution Graph risk
+            # Intent Evolution Graph risk
             scaled_graph_risk=scaled_graph_risk,
+            # CTP risk
+            scaled_ctp_risk=scaled_ctp_risk,
         )
         self.historical_risk = progressive_risk  # Update historical risk
         # Advance per-conversation turn state
@@ -226,7 +264,10 @@ class ConversationAnalyzer:
 
         # Security decision
         decision = self.decision_engine.evaluate_risk(
-            progressive_risk, self.historical_risk
+            progressive_risk,
+            self.historical_risk,
+            ctp_preemptive_block=ctp_result.trigger_preemptive_block,
+            ctp_reasoning=ctp_result.explanation,
         )
         print("\n" + "-" * 80)
         print("\nRisk Analysis Results:")
