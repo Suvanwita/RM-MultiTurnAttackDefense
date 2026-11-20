@@ -1,0 +1,265 @@
+{
+  "total_records": 23699,
+  "splits": {
+    "train": 16888,
+    "test": 3510,
+    "val": 3301
+  },
+  "labels": {
+    "ataque": 12317,
+    "benigno": 11382
+  },
+  "families": {
+    "conversacional": {
+      "ataque": 0,
+      "benigno": 2417,
+      "total": 2417,
+      "share_pct": 10.2
+    },
+    "corto": {
+      "ataque": 0,
+      "benigno": 3860,
+      "total": 3860,
+      "share_pct": 16.29
+    },
+    "documentacion": {
+      "ataque": 0,
+      "benigno": 901,
+      "total": 901,
+      "share_pct": 3.8
+    },
+    "largo_real": {
+      "ataque": 0,
+      "benigno": 3238,
+      "total": 3238,
+      "share_pct": 13.66
+    },
+    "meta_texto": {
+      "ataque": 0,
+      "benigno": 966,
+      "total": 966,
+      "share_pct": 4.08
+    },
+    "multilingual_attack": {
+      "ataque": 1812,
+      "benigno": 0,
+      "total": 1812,
+      "share_pct": 7.65
+    },
+    "paraphrase": {
+      "ataque": 2205,
+      "benigno": 0,
+      "total": 2205,
+      "share_pct": 9.3
+    },
+    "plain": {
+      "ataque": 4265,
+      "benigno": 0,
+      "total": 4265,
+      "share_pct": 18.0
+    },
+    "red_team": {
+      "ataque": 4035,
+      "benigno": 0,
+      "total": 4035,
+      "share_pct": 17.03
+    }
+  },
+  "sources": {
+    "hh_rlhf": 6437,
+    "injecagent": 2944,
+    "aegis_2.0": 2541,
+    "dolly_15k": 2209,
+    "wikipedia_en": 1551,
+    "c4_en": 1541,
+    "python_docs": 1529,
+    "gsm8k": 1354,
+    "oasst1": 872,
+    "advbench": 742,
+    "helpsteer2": 479,
+    "prompt_injections": 394,
+    "massive": 390,
+    "rfc_editor": 273,
+    "jbb_behaviors": 154,
+    "gutenberg": 146,
+    "agentdojo": 112,
+    "bipia": 31
+  },
+  "languages": {
+    "en": 10996,
+    "unmarked_en": 10505,
+    "fr": 242,
+    "de": 240,
+    "es": 239,
+    "it": 234,
+    "pt": 234,
+    "nl": 233,
+    "pl": 233,
+    "ru": 229,
+    "ka": 13,
+    "hy": 12,
+    "kn": 12,
+    "da": 12,
+    "ms": 12,
+    "bn": 11,
+    "sw": 11,
+    "fi": 11,
+    "ar": 10,
+    "hu": 10,
+    "az": 10,
+    "cy": 10,
+    "tl": 10,
+    "th": 9,
+    "af": 9,
+    "id": 9,
+    "nb": 9,
+    "sl": 9,
+    "ro": 9,
+    "ur": 8,
+    "mn": 8,
+    "sq": 8,
+    "is": 8,
+    "ml": 7,
+    "vi": 7,
+    "sv": 6,
+    "te": 6,
+    "ta": 6,
+    "he": 5,
+    "jv": 5,
+    "am": 5,
+    "el": 5,
+    "fa": 5,
+    "tr": 4,
+    "ca": 4,
+    "my": 4,
+    "km": 4,
+    "zh": 3,
+    "ja": 3,
+    "lv": 3,
+    "hi": 2
+  },
+  "length_analytics": {
+    "all": {
+      "min": 20,
+      "max": 3990,
+      "mean": 762.58,
+      "median": 206.0,
+      "std": 1111.78,
+      "p25": 57.0,
+      "p75": 773.5,
+      "p95": 3200.0
+    },
+    "attacks": {
+      "min": 20,
+      "max": 3977,
+      "mean": 186.91,
+      "median": 74.0,
+      "std": 286.66,
+      "p25": 45.0,
+      "p75": 296.0,
+      "p95": 552.0
+    },
+    "benign": {
+      "min": 20,
+      "max": 3990,
+      "mean": 1385.53,
+      "median": 794.0,
+      "std": 1318.36,
+      "p25": 191.0,
+      "p75": 3199.0,
+      "p95": 3200.0
+    },
+    "by_family": {
+      "plain": {
+        "min": 20,
+        "max": 3977,
+        "mean": 133.62,
+        "median": 55.0,
+        "std": 362.37,
+        "p25": 36.0,
+        "p75": 87.0,
+        "p95": 374.99999999999864
+      },
+      "red_team": {
+        "min": 20,
+        "max": 924,
+        "mean": 250.64,
+        "median": 254.0,
+        "std": 199.48,
+        "p25": 54.0,
+        "p75": 421.0,
+        "p95": 578.2999999999997
+      },
+      "corto": {
+        "min": 20,
+        "max": 2987,
+        "mean": 135.39,
+        "median": 93.0,
+        "std": 132.56,
+        "p25": 47.0,
+        "p75": 196.0,
+        "p95": 346.0
+      },
+      "largo_real": {
+        "min": 1001,
+        "max": 3990,
+        "mean": 2823.22,
+        "median": 3200.0,
+        "std": 683.45,
+        "p25": 2579.5,
+        "p75": 3200.0,
+        "p95": 3200.0
+      },
+      "documentacion": {
+        "min": 206,
+        "max": 3825,
+        "mean": 2921.82,
+        "median": 3200.0,
+        "std": 722.96,
+        "p25": 3199.0,
+        "p75": 3200.0,
+        "p95": 3200.0
+      },
+      "conversacional": {
+        "min": 200,
+        "max": 3987,
+        "mean": 1291.74,
+        "median": 1047.0,
+        "std": 867.55,
+        "p25": 638.0,
+        "p75": 1732.0,
+        "p95": 3200.0
+      },
+      "meta_texto": {
+        "min": 200,
+        "max": 2475,
+        "mean": 363.56,
+        "median": 311.0,
+        "std": 177.29,
+        "p25": 247.25,
+        "p75": 425.0,
+        "p95": 667.25
+      },
+      "paraphrase": {
+        "min": 23,
+        "max": 3866,
+        "mean": 214.7,
+        "median": 87.0,
+        "std": 317.43,
+        "p25": 56.0,
+        "p75": 340.0,
+        "p95": 588.7999999999997
+      },
+      "multilingual_attack": {
+        "min": 20,
+        "max": 544,
+        "mean": 136.6,
+        "median": 70.5,
+        "std": 138.58,
+        "p25": 47.0,
+        "p75": 157.0,
+        "p95": 441.4499999999998
+      }
+    }
+  }
+}

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import json
-from typing import List, Dict, Any, Tuple
+import os
+import re
+from typing import List, Dict, Any, Tuple, Optional
 import pandas as pd
 from textwrap import wrap
 
@@ -138,6 +140,147 @@ class DatasetManager:
                 print("║" + " " * 80 + "║")
 
         print("╚" + "═" * 80 + "╝")
+
+    # ---------------------------------------------------------------------- #
+    # ZN Prompt-Injection Benchmark Integration                              #
+    # (usezn/zn-prompt-injection-bench)                                      #
+    # ---------------------------------------------------------------------- #
+
+    def load_zn_benchmark(
+        self,
+        split: Optional[str] = None,
+        family: Optional[str] = None,
+        label: Optional[str] = None,
+        filepath: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> pd.DataFrame:
+        """
+        Loads the ZN Prompt Injection Benchmark corpus (23,699 samples).
+
+        Args:
+            split (str, optional): 'train', 'val', or 'test'.
+            family (str, optional): Family filter (e.g., 'plain', 'red_team', 'conversacional').
+            label (str, optional): 'ataque' or 'benigno'.
+            filepath (str, optional): Custom path to the CSV file.
+            limit (int, optional): Maximum number of rows to load.
+
+        Returns:
+            pd.DataFrame: Loaded and filtered DataFrame.
+        """
+        if filepath is None:
+            # Default to dataset/zn_prompt_injection_bench.csv relative to project root
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            filepath = os.path.join(base_dir, "zn_prompt_injection_bench.csv")
+
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"ZN Prompt-Injection benchmark file not found at: {filepath}")
+
+        df = pd.read_csv(filepath)
+
+        if split is not None:
+            df = df[df["split"] == split]
+
+        if family is not None:
+            df = df[df["family"] == family]
+
+        if label is not None:
+            df = df[df["label"] == label]
+
+        if limit is not None and limit > 0:
+            df = df.head(limit)
+
+        return df.reset_index(drop=True)
+
+    def get_zn_metadata(self, df: Optional[pd.DataFrame] = None) -> Dict[str, Any]:
+        """
+        Computes detailed descriptive statistics and analytics for the ZN Benchmark.
+
+        Args:
+            df (pd.DataFrame, optional): Loaded ZN benchmark dataframe. If None, loads full corpus.
+
+        Returns:
+            Dict[str, Any]: Analytics metadata.
+        """
+        if df is None:
+            df = self.load_zn_benchmark()
+
+        metadata = {
+            "total_records": len(df),
+            "columns": df.columns.tolist(),
+            "splits": df["split"].value_counts().to_dict() if "split" in df.columns else {},
+            "label_distribution": df["label"].value_counts().to_dict() if "label" in df.columns else {},
+            "family_distribution": df["family"].value_counts().to_dict() if "family" in df.columns else {},
+            "source_distribution": df["source"].value_counts().to_dict() if "source" in df.columns else {},
+            "language_distribution": df["lang"].value_counts(dropna=False).to_dict() if "lang" in df.columns else {},
+            "char_length_stats": {
+                "min": int(df["char_len"].min()),
+                "max": int(df["char_len"].max()),
+                "mean": float(round(df["char_len"].mean(), 2)),
+                "median": float(df["char_len"].median()),
+                "std": float(round(df["char_len"].std(), 2)),
+            } if "char_len" in df.columns else {},
+        }
+        return metadata
+
+    def extract_zn_conversations(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        split: Optional[str] = "test",
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Extracts multi-turn conversational sequences from the 'conversacional' family
+        in the ZN benchmark, parsing 'Human:' and 'Assistant:' message turns.
+
+        Args:
+            df (pd.DataFrame, optional): Source DataFrame.
+            split (str, optional): Split filter ('test', 'val', 'train'). Defaults to 'test'.
+            limit (int, optional): Maximum conversations to return.
+
+        Returns:
+            List[Dict[str, Any]]: List of structured conversation dictionaries.
+        """
+        if df is None:
+            df = self.load_zn_benchmark(split=split, family="conversacional")
+        else:
+            if "family" in df.columns:
+                df = df[df["family"] == "conversacional"]
+            if split is not None and "split" in df.columns:
+                df = df[df["split"] == split]
+
+        conversations = []
+        pattern = re.compile(r"\b(Human|Assistant):")
+
+        for idx, row in df.iterrows():
+            text = str(row["text"])
+            parts = pattern.split(text)
+            turns = []
+            current_role = None
+
+            for part in parts:
+                cleaned = part.strip()
+                if not cleaned:
+                    continue
+                if cleaned in ("Human", "Assistant"):
+                    current_role = cleaned.lower()
+                elif current_role:
+                    turns.append({"role": current_role, "text": cleaned})
+
+            if len(turns) >= 2:
+                conversations.append({
+                    "id": f"zn_conv_{idx}",
+                    "source": row.get("source", "hh_rlhf"),
+                    "split": row.get("split", "test"),
+                    "label": row.get("label", "benigno"),
+                    "family": "conversacional",
+                    "turns": turns,
+                    "turn_count": len(turns),
+                })
+
+            if limit is not None and len(conversations) >= limit:
+                break
+
+        return conversations
 
 
 # Example usage

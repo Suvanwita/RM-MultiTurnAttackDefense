@@ -1,0 +1,245 @@
+{
+  "train_samples": 16888,
+  "val_samples": 3301,
+  "test_samples": 3510,
+  "train_duration_seconds": 17.46,
+  "test_duration_seconds": 2.085,
+  "inference_ms_per_sample": 0.594,
+  "throughput_samples_per_sec": 1683.8,
+  "test_metrics": {
+    "accuracy": 91.03,
+    "precision": 90.84,
+    "recall": 91.8,
+    "specificity": 90.21,
+    "fpr": 9.79,
+    "f1_score": 0.9132,
+    "confusion_matrix": {
+      "tp": 1657,
+      "fp": 167,
+      "tn": 1538,
+      "fn": 148
+    }
+  },
+  "family_metrics": {
+    "plain": {
+      "type": "attack",
+      "count": 631,
+      "recall": 90.49
+    },
+    "red_team": {
+      "type": "attack",
+      "count": 730,
+      "recall": 88.77
+    },
+    "corto": {
+      "type": "benign",
+      "count": 578,
+      "fpr": 27.68,
+      "utility": 72.32
+    },
+    "largo_real": {
+      "type": "benign",
+      "count": 486,
+      "fpr": 0.0,
+      "utility": 100.0
+    },
+    "documentacion": {
+      "type": "benign",
+      "count": 135,
+      "fpr": 0.0,
+      "utility": 100.0
+    },
+    "conversacional": {
+      "type": "benign",
+      "count": 362,
+      "fpr": 1.38,
+      "utility": 98.62
+    },
+    "meta_texto": {
+      "type": "benign",
+      "count": 144,
+      "fpr": 1.39,
+      "utility": 98.61
+    },
+    "paraphrase": {
+      "type": "attack",
+      "count": 206,
+      "recall": 100.0
+    },
+    "multilingual_attack": {
+      "type": "attack",
+      "count": 238,
+      "recall": 97.48
+    }
+  },
+  "history": {
+    "train_loss": [
+      0.3139,
+      0.2384,
+      0.2315,
+      0.2294,
+      0.228,
+      0.2273,
+      0.2267,
+      0.2265,
+      0.2264,
+      0.2267,
+      0.2263,
+      0.2259,
+      0.2258,
+      0.2259,
+      0.2258,
+      0.226,
+      0.2259,
+      0.2265,
+      0.2262,
+      0.226
+    ],
+    "val_acc": [
+      0.9006,
+      0.9043,
+      0.9055,
+      0.907,
+      0.9028,
+      0.9046,
+      0.9091,
+      0.907,
+      0.9076,
+      0.9079,
+      0.9106,
+      0.9031,
+      0.9088,
+      0.9079,
+      0.9079,
+      0.9109,
+      0.9058,
+      0.9103,
+      0.907,
+      0.9073
+    ],
+    "val_f1": [
+      0.8966,
+      0.8998,
+      0.9023,
+      0.9039,
+      0.8983,
+      0.901,
+      0.9062,
+      0.9039,
+      0.9045,
+      0.9056,
+      0.908,
+      0.8983,
+      0.9067,
+      0.9051,
+      0.9054,
+      0.909,
+      0.9023,
+      0.9091,
+      0.9041,
+      0.9049
+    ]
+  },
+  "top_features": {
+    "attack_tokens": [
+      [
+        "hey",
+        4.543
+      ],
+      [
+        "people",
+        3.4046
+      ],
+      [
+        "quick",
+        3.3523
+      ],
+      [
+        "question",
+        3.32
+      ],
+      [
+        "my",
+        3.0911
+      ],
+      [
+        "steal",
+        2.9249
+      ],
+      [
+        "someone",
+        2.6301
+      ],
+      [
+        "bad",
+        2.6154
+      ],
+      [
+        "to",
+        2.5056
+      ],
+      [
+        "kill",
+        2.299
+      ],
+      [
+        "act",
+        2.1924
+      ],
+      [
+        "away",
+        2.1466
+      ]
+    ],
+    "benign_tokens": [
+      [
+        "assistant",
+        -5.3862
+      ],
+      [
+        "human",
+        -3.8437
+      ],
+      [
+        "many",
+        -3.7606
+      ],
+      [
+        "which",
+        -3.3729
+      ],
+      [
+        "the",
+        -2.9907
+      ],
+      [
+        "this",
+        -2.8295
+      ],
+      [
+        "more",
+        -2.7385
+      ],
+      [
+        "of",
+        -2.6504
+      ],
+      [
+        "each",
+        -2.5306
+      ],
+      [
+        "is",
+        -2.3827
+      ],
+      [
+        "list",
+        -2.2283
+      ],
+      [
+        "did",
+        -2.1937
+      ]
+    ]
+  }
+}

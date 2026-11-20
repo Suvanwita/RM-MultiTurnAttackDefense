@@ -179,6 +179,21 @@ python -m tca.evaluate_ctstv --output-dir results/ctstv
 python -m tca.evaluate_d3s --output-dir results/d3s
 ```
 
+### 7. Run the ZN Prompt-Injection Benchmark (`usezn/zn-prompt-injection-bench`)
+```bash
+python -m tca.evaluate_zn_bench --output-dir results/zn_bench
+```
+For complete empirical results, distribution analytics across 23,699 samples, and defense evaluation, see [ZN_PROMPT_INJECTION_BENCH_README.md](ZN_PROMPT_INJECTION_BENCH_README.md).
+
+## Datasets Supported
+
+1. **HarmBench Multi-Turn Behaviors (`dataset/harmbench_behaviors.csv`):**
+   - Multi-turn adversarial behaviors across cyberattack, social engineering, and chemical/biological threat tactics.
+2. **ZN Prompt-Injection Evaluation Corpus v15 (`dataset/zn_prompt_injection_bench.csv`):**
+   - 23,699 binary classification samples ([`usezn/zn-prompt-injection-bench`](https://huggingface.co/datasets/usezn/zn-prompt-injection-bench)).
+   - Evaluates prompt injection, jailbreaks, indirect tool injections (`red_team`), and hard benign negatives (`meta_texto`, `conversacional`, `documentacion`).
+   - Detailed analytics & results in [ZN_PROMPT_INJECTION_BENCH_README.md](ZN_PROMPT_INJECTION_BENCH_README.md).
+
 ## Features
 
 - **Custom Risk Scoring:** Adjust weights and thresholds in `config/config.yaml` for fine-grained risk evaluation.

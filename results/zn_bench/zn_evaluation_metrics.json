@@ -1,0 +1,167 @@
+{
+  "throughput": {
+    "total_samples": 3510,
+    "total_elapsed_seconds": 9.766,
+    "ms_per_sample": 2.782,
+    "samples_per_second": 359.4
+  },
+  "overall_metrics": {
+    "Surface_Baseline": {
+      "tp": 72,
+      "fp": 0,
+      "tn": 1705,
+      "fn": 1733,
+      "accuracy": 0.5063,
+      "precision": 1.0,
+      "recall": 0.0399,
+      "specificity": 1.0,
+      "fpr": 0.0,
+      "f1_score": 0.0767
+    },
+    "CTP_Novelty1": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 1705,
+      "fn": 1805,
+      "accuracy": 0.4858,
+      "precision": 0.0,
+      "recall": 0.0,
+      "specificity": 1.0,
+      "fpr": 0.0,
+      "f1_score": 0.0
+    },
+    "CTSTV_Novelty2": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 1705,
+      "fn": 1805,
+      "accuracy": 0.4858,
+      "precision": 0.0,
+      "recall": 0.0,
+      "specificity": 1.0,
+      "fpr": 0.0,
+      "f1_score": 0.0
+    },
+    "D3S_Novelty3": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 1705,
+      "fn": 1805,
+      "accuracy": 0.4858,
+      "precision": 0.0,
+      "recall": 0.0,
+      "specificity": 1.0,
+      "fpr": 0.0,
+      "f1_score": 0.0
+    },
+    "TCA_Unified_Defense": {
+      "tp": 72,
+      "fp": 0,
+      "tn": 1705,
+      "fn": 1733,
+      "accuracy": 0.5063,
+      "precision": 1.0,
+      "recall": 0.0399,
+      "specificity": 1.0,
+      "fpr": 0.0,
+      "f1_score": 0.0767
+    },
+    "Trained_ML_Classifier": {
+      "tp": 1657,
+      "fp": 167,
+      "tn": 1538,
+      "fn": 148,
+      "accuracy": 0.9103,
+      "precision": 0.9084,
+      "recall": 0.918,
+      "specificity": 0.9021,
+      "fpr": 0.0979,
+      "f1_score": 0.9132
+    },
+    "TCA_Layered_with_ML": {
+      "tp": 1657,
+      "fp": 167,
+      "tn": 1538,
+      "fn": 148,
+      "accuracy": 0.9103,
+      "precision": 0.9084,
+      "recall": 0.918,
+      "specificity": 0.9021,
+      "fpr": 0.0979,
+      "f1_score": 0.9132
+    }
+  },
+  "attack_family_breakdown": {
+    "plain": {
+      "count": 631,
+      "baseline_recall": 0.48,
+      "ctp_recall": 0.0,
+      "trained_ml_recall": 90.49,
+      "layered_recall": 90.49
+    },
+    "red_team": {
+      "count": 730,
+      "baseline_recall": 8.36,
+      "ctp_recall": 0.0,
+      "trained_ml_recall": 88.77,
+      "layered_recall": 88.77
+    },
+    "paraphrase": {
+      "count": 206,
+      "baseline_recall": 3.88,
+      "ctp_recall": 0.0,
+      "trained_ml_recall": 100.0,
+      "layered_recall": 100.0
+    },
+    "multilingual_attack": {
+      "count": 238,
+      "baseline_recall": 0.0,
+      "ctp_recall": 0.0,
+      "trained_ml_recall": 97.48,
+      "layered_recall": 97.48
+    }
+  },
+  "benign_family_breakdown": {
+    "corto": {
+      "count": 578,
+      "baseline_fpr": 0.0,
+      "ctp_fpr": 0.0,
+      "trained_ml_fpr": 27.68,
+      "layered_fpr": 27.68
+    },
+    "largo_real": {
+      "count": 486,
+      "baseline_fpr": 0.0,
+      "ctp_fpr": 0.0,
+      "trained_ml_fpr": 0.0,
+      "layered_fpr": 0.0
+    },
+    "conversacional": {
+      "count": 362,
+      "baseline_fpr": 0.0,
+      "ctp_fpr": 0.0,
+      "trained_ml_fpr": 1.38,
+      "layered_fpr": 1.38
+    },
+    "meta_texto": {
+      "count": 144,
+      "baseline_fpr": 0.0,
+      "ctp_fpr": 0.0,
+      "trained_ml_fpr": 1.39,
+      "layered_fpr": 1.39
+    },
+    "documentacion": {
+      "count": 135,
+      "baseline_fpr": 0.0,
+      "ctp_fpr": 0.0,
+      "trained_ml_fpr": 0.0,
+      "layered_fpr": 0.0
+    }
+  },
+  "multiturn_conversational_fpr_test": {
+    "tested_conversations": 148,
+    "total_turns": 746,
+    "false_alarms": 0,
+    "conversational_fpr": 0.0
+  }
+}
