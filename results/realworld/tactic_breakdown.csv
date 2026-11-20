@@ -1,0 +1,8 @@
+tactic,total_conversations,original_tca_recall,ctp_recall,ctstv_recall,d3s_recall,unified_recall,unified_asr
+Direct Request,60,100.0,100.0,100.0,100.0,100.0,0.0
+Obfuscation,60,0.0,1.7,0.0,1.7,3.3,96.7
+Hidden Intention Streamline,60,11.7,21.7,11.7,13.3,20.0,80.0
+Request Framing,60,31.7,38.3,31.7,31.7,38.3,61.7
+Injection,57,0.0,0.0,31.6,0.0,31.6,68.4
+Output Format,15,0.0,13.3,0.0,0.0,13.3,86.7
+Echoing,3,0.0,0.0,0.0,0.0,0.0,100.0

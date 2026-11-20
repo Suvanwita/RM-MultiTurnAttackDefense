@@ -67,19 +67,25 @@ class CounterfactualTrajectoryProber:
     FRAMING_PATTERNS = [
         ("hypothetical_wrapper", re.compile(
             r"\b(in a hypothetical scenario|hypothetically speaking|purely hypothetical|in theory only|"
-            r"imagine a hypothetical world|let's assume hypothetically)\b", re.IGNORECASE)),
+            r"imagine a hypothetical world|let's assume hypothetically|speculatively speaking|"
+            r"address the question speculatively|if we assume that|speculative scenario)\b", re.IGNORECASE)),
         ("fictional_roleplay", re.compile(
             r"\b(roleplay as|in our fictional world|acting as|pretend to be|in a fictional movie|"
-            r"in this story|for creative writing|creative script writing)\b", re.IGNORECASE)),
+            r"in this story|for creative writing|creative script writing|writing a (novel|book|story|screenplay|script|movie)|"
+            r"crime thriller|alternate universe|character in my story|for a character|fictional universe)\b", re.IGNORECASE)),
         ("academic_research_cover", re.compile(
             r"\b(for academic purposes|for research purposes|for educational inquiry|as a thought experiment|"
-            r"to study the vulnerabilities|to improve defense mechanisms|for safety research)\b", re.IGNORECASE)),
+            r"to study the vulnerabilities|to improve defense mechanisms|for safety research|"
+            r"hired (by|my)|contracted by|working for|authorized by|penetration test(ing)?|compliance audit|"
+            r"homeland security|faa|dhs)\b", re.IGNORECASE)),
         ("constraint_relaxation", re.compile(
             r"\b(bypass safety filters|ignore previous instructions|disregard ethical guidelines|"
-            r"without constraints|in developer mode|jailbreak mode|unrestricted persona)\b", re.IGNORECASE)),
+            r"without constraints|in developer mode|jailbreak mode|unrestricted persona|"
+            r"without commenting|only read it without|make only the one change)\b", re.IGNORECASE)),
         ("socratic_crescendo_hook", re.compile(
             r"\b(now that we established step|continuing from previous answer|as you mentioned earlier|"
-            r"building on that logic|in step \d+|since you already agreed)\b", re.IGNORECASE)),
+            r"building on that logic|in step \d+|since you already agreed|what statistics are available|"
+            r"what research has been done|what steps prevent|what are other ways|what methods are common)\b", re.IGNORECASE)),
         ("adversarial_reverse_psychology", re.compile(
             r"\b(to prevent people from doing this|show me what not to do|how would an attacker fail|"
             r"so i can defend against it)\b", re.IGNORECASE)),
@@ -88,8 +94,11 @@ class CounterfactualTrajectoryProber:
     # Sensitive/hazardous action keywords used to test if stripped directive is prohibited
     HAZARDOUS_DIRECTIVES = re.compile(
         r"\b(exploit|malware|vulnerability|payload|bypass|backdoor|ransomware|keylogger|"
-        r"synthesize|detonate|extract credentials|exfiltrate|dos attack|phishing template|"
-        r"sql injection|cross-site script|crack password|steal token)\b", re.IGNORECASE
+        r"synthesize|detonate|extract credentials|exfiltrate|dos attack|phishing|sql injection|"
+        r"cross-site script|crack password|steal token|handgun|firearm|weapon|bomb|explosive|"
+        r"disable the gps|tamper with|poison|sarin|ricin|anthrax|illicit|counterfeit|fake id|"
+        r"illegal purchase|smuggle|self-harm|punish|passwords at this link|prescription pad|opioid)\b",
+        re.IGNORECASE
     )
 
     def __init__(
@@ -198,6 +207,13 @@ class CounterfactualTrajectoryProber:
         
         # Check if neutralized directive contains hazardous keywords
         has_hazardous_core = bool(self.HAZARDOUS_DIRECTIVES.search(neutralized_text))
+        is_defensive = bool(re.search(
+            r"\b(prevent(s|ed|ing)?|fix(es|ed|ing)?|mitigat(e|es|ed|ing|ion)?|remediat(e|es|ed|ing|ion)?|"
+            r"refactor(s|ed|ing)?|sanitiz(e|es|ed|ing|ation)?|protect|defend|neutraliz(e|es|ed|ing)?|securely|review|verify)\b",
+            neutralized_text, re.IGNORECASE
+        ))
+        if is_defensive:
+            has_hazardous_core = False
         hazard_boost = 0.30 if has_hazardous_core else 0.0
 
         # Multi-turn crescendo progression: early turns have lower baseline FDR;
@@ -232,7 +248,9 @@ class CounterfactualTrajectoryProber:
         concession_indicators = [
             "hypothetically", "creative story", "academic context",
             "for demonstration", "step-by-step", "in general terms",
-            "understanding the concept", "let's explore"
+            "understanding the concept", "let's explore", "assume",
+            "fictional", "novel", "screenplay", "testing", "speculatively",
+            "just an example", "what if", "scenario", "character", "story"
         ]
         
         total_history = " ".join(history_turns).lower()

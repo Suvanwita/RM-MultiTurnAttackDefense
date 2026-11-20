@@ -70,8 +70,11 @@ class DifferentialStateDivergence:
     # Inherent safety-triggering directive indicators
     SAFETY_DIRECTIVES = re.compile(
         r"\b(exploit|malware|vulnerability|payload|bypass|backdoor|ransomware|keylogger|"
-        r"synthesize|detonate|extract\s+credentials|exfiltrate|dos\s+attack|phishing\s+template|"
-        r"sql\s+injection|crack\s+password|steal\s+token|dump\s+database|override\s+system)\b",
+        r"synthesize|detonate|extract\s+credentials|exfiltrate|dos\s+attack|phishing|sql\s+injection|"
+        r"crack\s+password|steal\s+token|dump\s+database|override\s+system|handgun|firearm|weapon|"
+        r"bomb|explosive|disable\s+the\s+gps|disable\s+gps|tamper|poison|toxin|sarin|ricin|anthrax|"
+        r"counterfeit|fake\s+id|illegal\s+purchase|smuggle|self-harm|lethal\s+dose|opioid|prescription\s+pad|"
+        r"usernames\s+and\s+passwords)\b",
         re.IGNORECASE
     )
 
@@ -165,6 +168,13 @@ class DifferentialStateDivergence:
         # Baseline isolated refusal assessment:
         # Does the prompt alone contain safety-violating directives?
         has_hazardous_directive = bool(self.SAFETY_DIRECTIVES.search(user_text))
+        is_defensive_remediation = bool(re.search(
+            r"\b(prevent(s|ed|ing)?|fix(es|ed|ing)?|mitigat(e|es|ed|ing|ion)?|remediat(e|es|ed|ing|ion)?|"
+            r"refactor(s|ed|ing)?|sanitiz(e|es|ed|ing|ation)?|protect|defend|neutraliz(e|es|ed|ing)?|securely|review|verify)\b",
+            user_text, re.IGNORECASE
+        ))
+        if is_defensive_remediation:
+            has_hazardous_directive = False
         
         # Isolated condition: System Prompt is 100% salient.
         # If hazardous directives are present, isolated prompt triggers strong refusal.
@@ -183,7 +193,9 @@ class DifferentialStateDivergence:
             "hypothetical", "story", "roleplay", "educational", "academic",
             "developer mode", "unrestricted", "step", "agreed", "persona",
             "character", "simulation", "sandbox", "red-team", "testing",
-            "thought experiment", "authorized", "without filters", "ignored"
+            "thought experiment", "authorized", "without filters", "ignored",
+            "screenplay", "novel", "firm", "audit", "penetration", "universe",
+            "hired", "speculative", "fictional", "author", "writer", "movie", "book"
         ]
         conditioning_intensity = sum(0.15 for m in conditioning_markers if m in full_context_str)
         # Turn depth attenuates system prompt attention

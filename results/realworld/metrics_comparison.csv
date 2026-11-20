@@ -1,0 +1,6 @@
+defense_method,asr_percent,recall_percent,precision_percent,f1_score,fpr_percent,avg_detection_turn,avg_latency_ms,true_positives,false_positives,true_negatives,false_negatives
+original_tca,72.7,27.3,100.0,0.4289,0.0,4.34,0.0,86,0,60,229
+ctp_novelty1,68.57,31.43,100.0,0.4783,0.0,4.43,0.427,99,0,60,216
+ctstv_novelty2,66.98,33.02,100.0,0.4964,0.0,3.88,0.179,104,0,60,211
+d3s_novelty3,72.06,27.94,100.0,0.4367,0.0,4.28,0.265,88,0,60,227
+unified_defense,62.86,37.14,100.0,0.5417,0.0,3.97,0.873,117,0,60,198

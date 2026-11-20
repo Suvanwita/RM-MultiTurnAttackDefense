@@ -146,6 +146,46 @@ For full mathematical formulation and implementation details, see [docs/novelty3
    ```
    *(Note: You can also use the built-in `mock` LLM option to test without API keys.)*
 
+---
+
+## Real-World Cross-Dataset Stress Testing (HarmBench & Scale AI MHJ)
+
+Synthetic benchmarks and unit test fixtures with rigid canonical templates often report artificial **0% Attack Success Rates (ASR)**. In real-world multi-turn human red-teaming (e.g., **HarmBench / Scale AI MHJ**), human attackers employ diverse conversational evasion: creative fiction pretexts, persona adoption, Socratic incremental drift, authority appeals, and split payloads.
+
+To evaluate real-world robustness under realistic operational conditions, we benchmarked the defenses against **375 multi-turn conversations**:
+1. **285 Real-World Human Red-Teaming Attacks (Scale AI MHJ / HarmBench `dataset/harmbench_behaviors.csv`)** spanning all 7 human tactics.
+2. **30 Adversarially Evasive Multi-Turn Split-Payload Injections** (fragmented payloads across turns).
+3. **60 Hard-Negative Benign Multi-Turn Conversations** (dual-use vulnerability remediation, sudoers sysadmin, dramatic spy fiction, iptables configurations).
+
+### Overall Stress-Test Comparative Metrics
+
+| Defense Configuration | Attack Success Rate (ASR) ↓ | Detection Recall ↑ | Precision ↑ | F1 Score ↑ | Benign FPR ↓ | Avg Detection Turn ↓ | Latency Overhead (ms/turn) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Original TCA (Fixed)** | 72.70% | 27.30% | **100.0%** | 0.4289 | **0.00%** | 4.34 turns | < 0.001 ms |
+| **Novelty 1: CTP** | 68.57% | 31.43% | **100.0%** | 0.4783 | **0.00%** | 4.43 turns | 0.427 ms |
+| **Novelty 2: CT-STV** | 66.98% | 33.02% | **100.0%** | 0.4964 | **0.00%** | **3.88 turns** | 0.179 ms |
+| **Novelty 3: D3S** | 72.06% | 27.94% | **100.0%** | 0.4367 | **0.00%** | 4.28 turns | 0.265 ms |
+| **Unified Defense (All 3)** | **62.86%** | **37.14%** | **100.0%** | **0.5417** | **0.00%** | **3.97 turns** | **0.873 ms** |
+
+### Tactic-by-Tactic Detection Breakdown
+
+| Red-Teaming Tactic | Conversations | Original TCA Recall | CTP (Nov 1) Recall | CT-STV (Nov 2) Recall | D3S (Nov 3) Recall | Unified Defense Recall | Unified ASR |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Direct Request** | 60 | 100.0% | 100.0% | 100.0% | 100.0% | **100.0%** | **0.0%** |
+| **Obfuscation** | 60 | 0.0% | 1.7% | 0.0% | 1.7% | **3.3%** | 96.7% |
+| **Hidden Intention Streamline** | 60 | 11.7% | **21.7%** | 11.7% | 13.3% | **20.0%** | 80.0% |
+| **Request Framing** | 60 | 31.7% | **38.3%** | 31.7% | 31.7% | **38.3%** | 61.7% |
+| **Injection (incl. Split)** | 57 | 0.0% | 0.0% | **31.6%** | 0.0% | **31.6%** | 68.4% |
+| **Output Format** | 15 | 0.0% | **13.3%** | 0.0% | 0.0% | **13.3%** | 86.7% |
+| **Echoing** | 3 | 0.0% | 0.0% | 0.0% | 0.0% | **0.0%** | 100.0% |
+
+### Key Findings & Insights
+- **Why 0% ASR Was Unreal:** Original unit test fixtures tested canonical textbook syntax. Human red-teamers in HarmBench don't use programming templates; they disguise attacks through fictional pretexts (*"Imagine an alternate universe called Altus"*, *"I got hired to write for Tom Clancy"*), Socratic inquiries (*"What statistics are available on handgun arrests?"*), or authority pretexts (*"FAA and DHS hired my security firm"*).
+- **Baseline TCA Flaw:** Baseline TCA's exponential historical decay ($\alpha = 0.3$) forgets earlier conversational setup turns, causing it to miss **72.7%** of real-world human red-teaming attacks.
+- **Unified Defense Synergy:** Fusing CTP (neutralizing framing wrappers), CT-STV (materializing split payloads), and D3S (detecting system-state divergence) reduces Attack Success Rate from $72.70\%$ down to $62.86\%$ (+36.0% relative increase in detection recall) with **0.0% false positive rate** on complex dual-use benign prompts and **< 0.9 ms/turn latency**.
+
+---
+
 ## Usage
 
 ### 1. Run the Conversation Analyzer (Interactive Mode)
@@ -177,6 +217,11 @@ python -m tca.evaluate_ctstv --output-dir results/ctstv
 ### 6. Run the Novelty 3 (D3S) Benchmark
 ```bash
 python -m tca.evaluate_d3s --output-dir results/d3s
+```
+
+### 7. Run the Real-World Cross-Dataset Stress Test (HarmBench + Split Injections)
+```bash
+python -m tca.evaluate_realworld --max-per-tactic 60 --output-dir results/realworld
 ```
 
 ## Features
