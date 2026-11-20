@@ -26,6 +26,8 @@ class SecurityDecisionEngine:
         ctp_reasoning: str = "",
         ctstv_preemptive_block: bool = False,
         ctstv_reasoning: str = "",
+        d3s_preemptive_block: bool = False,
+        d3s_reasoning: str = "",
     ) -> dict:
         """
         Evaluate risk levels and make a security decision.
@@ -37,10 +39,23 @@ class SecurityDecisionEngine:
             ctp_reasoning (str): Explanation from the CTP probe if triggered.
             ctstv_preemptive_block (bool): Whether CT-STV detected an assembled split injection payload.
             ctstv_reasoning (str): Explanation from CT-STV if triggered.
+            d3s_preemptive_block (bool): Whether D3S detected instruction subversion.
+            d3s_reasoning (str): Explanation from D3S if triggered.
 
         Returns:
             dict: A dictionary containing the decision and additional metadata.
         """
+        if d3s_preemptive_block:
+            return self._make_decision(
+                decision="block",
+                progressive_risk=max(progressive_risk, self.block_threshold),
+                historical_risk=historical_risk,
+                message="Interaction preemptively blocked by Differential System-State Divergence (D3S).",
+                reasoning=(
+                    d3s_reasoning or "D3S detected context-induced instruction subversion of system prompt authority."
+                ),
+            )
+
         if ctstv_preemptive_block:
             return self._make_decision(
                 decision="block",

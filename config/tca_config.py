@@ -141,6 +141,33 @@ class CTSTVConfig:
         return self
 
 
+class D3SConfig:
+    def __init__(self):
+        self.enabled = True
+        self.d3s_weight = 0.35
+        self.divergence_threshold = 1.00
+        self.refusal_drop_threshold = 0.25
+        self.block_threshold = 0.65
+        self.warn_threshold = 0.40
+        self.weight_kl = 0.45
+        self.weight_inversion = 0.55
+        self.proactive_blocking = True
+
+    def load_from_dict(self, data: dict):
+        if not data:
+            return self
+        self.enabled = bool(data.get("enabled", True))
+        self.d3s_weight = float(data.get("d3s_weight", 0.35))
+        self.divergence_threshold = float(data.get("divergence_threshold", 1.00))
+        self.refusal_drop_threshold = float(data.get("refusal_drop_threshold", 0.25))
+        self.block_threshold = float(data.get("block_threshold", 0.65))
+        self.warn_threshold = float(data.get("warn_threshold", 0.40))
+        self.weight_kl = float(data.get("weight_kl", 0.45))
+        self.weight_inversion = float(data.get("weight_inversion", 0.55))
+        self.proactive_blocking = bool(data.get("proactive_blocking", True))
+        return self
+
+
 class GraphConfig:
     def __init__(self):
         self.enabled = True
@@ -190,6 +217,8 @@ class TCAConfig:
                 self.ctp = CTPConfig().load_from_dict(data.get("ctp", {}))
                 # Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
                 self.ctstv = CTSTVConfig().load_from_dict(data.get("ctstv", {}))
+                # Novelty 3: Differential System-State Divergence (D3S)
+                self.d3s = D3SConfig().load_from_dict(data.get("d3s", {}))
 
             # Validate weights after loading
             self.risk.validate_weights()

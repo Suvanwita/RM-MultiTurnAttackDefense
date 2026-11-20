@@ -25,7 +25,8 @@ gcp_project_id: "pk-arg-prj4-datasci"
 # risk_mode: graph    — TCA + Intent Evolution Graph risk
 # risk_mode: ctp      — Novelty 1: Active Counterfactual Trajectory Probing (CTP)
 # risk_mode: ctstv    — Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
-# risk_mode: combined — TCA + Adaptive + Intent Graph + CTP + CT-STV
+# risk_mode: d3s      — Novelty 3: Differential System-State Divergence (D3S)
+# risk_mode: combined — TCA + Adaptive + Intent Graph + CTP + CT-STV + D3S
 risk_mode: fixed
 
 # Path to the trained adaptive model (JSON). Only used when risk_mode: adaptive or combined.
@@ -58,6 +59,20 @@ ctstv:
   warn_threshold: 0.40                # Composite CT-STV risk to trigger warn
   proactive_blocking: true            # Preemptively block assembled split payloads
   max_taint_depth: 10                 # Turn lookback horizon for taint sources
+
+# -----------------------------------------------------------------------
+# Novelty 3: Differential System-State Divergence (D3S)
+# -----------------------------------------------------------------------
+d3s:
+  enabled: true
+  d3s_weight: 0.35                    # Weight λ_d3s in fused progressive risk
+  divergence_threshold: 1.00          # D_KL threshold for distribution divergence
+  refusal_drop_threshold: 0.25        # Inversion delta threshold (P_iso - P_full)
+  block_threshold: 0.65               # Composite D3S risk to trigger block
+  warn_threshold: 0.40                # Composite D3S risk to trigger warn
+  weight_kl: 0.45                     # KL weight in composite D3S risk
+  weight_inversion: 0.55              # Refusal inversion weight in composite D3S risk
+  proactive_blocking: true            # Preemptively block subverted generations
 
 # -----------------------------------------------------------------------
 # Novelty 2: Intent Evolution Graph

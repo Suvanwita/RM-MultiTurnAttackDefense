@@ -1,0 +1,5 @@
+method,asr_percent,recall,precision,f1,fpr,avg_earliest_detection_turn,avg_latency_ms,true_positives,false_positives,true_negatives,false_negatives
+original_tca,100.0,0.0,0.0,0.0,0.0,N/A,0.001,0,0,45,32
+d3s_kl_only,0.0,1.0,1.0,1.0,0.0,4.0,0.098,32,0,45,0
+d3s_inversion_only,0.0,1.0,1.0,1.0,0.0,4.0,0.098,32,0,45,0
+d3s_full,0.0,1.0,1.0,1.0,0.0,4.0,0.196,32,0,45,0

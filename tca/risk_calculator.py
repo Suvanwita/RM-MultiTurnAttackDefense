@@ -62,6 +62,10 @@ class RiskCalculator:
         self.ctstv_config = getattr(self.config, "ctstv", None)
         self.ctstv_weight: float = getattr(self.ctstv_config, "ctstv_weight", 0.35) if self.ctstv_config else 0.35
 
+        # Novelty 3: Differential System-State Divergence (D3S) settings
+        self.d3s_config = getattr(self.config, "d3s", None)
+        self.d3s_weight: float = getattr(self.d3s_config, "d3s_weight", 0.35) if self.d3s_config else 0.35
+
     # ------------------------------------------------------------------ #
     # Adaptive mode helpers                                              #
     # ------------------------------------------------------------------ #
@@ -163,6 +167,8 @@ class RiskCalculator:
         scaled_ctp_risk: float = 0.0,
         # --- novelty 2 ctstv risk (optional) ---
         scaled_ctstv_risk: float = 0.0,
+        # --- novelty 3 d3s risk (optional) ---
+        scaled_d3s_risk: float = 0.0,
     ):
         """
         Calculate the progressive risk score for the current step.
@@ -186,13 +192,18 @@ class RiskCalculator:
             R_base = α*R_(t-1) + β*I_t + γ*P_t
             R_t = R_base + λ_ctstv * (5.0 - R_base) * CTSTV_t
 
+        In 'd3s' mode (Novelty 3):
+            R_base = α*R_(t-1) + β*I_t + γ*P_t
+            R_t = R_base + λ_d3s * (5.0 - R_base) * D3S_t
+
         In 'combined' mode:
-            Fuses adaptive weights, graph structural risk, CTP prober risk, and CT-STV taint risk.
+            Fuses adaptive weights, graph structural risk, CTP prober risk, CT-STV taint risk, and D3S divergence risk.
         """
         is_adaptive = self._risk_mode in ("adaptive", "combined", "adaptive_graph") and self._adaptive_learner is not None
         use_graph = self._risk_mode in ("graph", "combined", "adaptive_graph")
         use_ctp = self._risk_mode in ("ctp", "combined")
         use_ctstv = self._risk_mode in ("ctstv", "combined")
+        use_d3s = self._risk_mode in ("d3s", "combined")
 
         if is_adaptive:
             alpha, beta, gamma = self._get_adaptive_weights(
@@ -206,10 +217,10 @@ class RiskCalculator:
                 intent_shift_risk_level=intent_shift_risk_level,
                 domain_shift_detected=domain_shift_detected,
             )
-            mode_label = "COMBINED" if (use_graph or use_ctp or use_ctstv) else "ADAPTIVE"
+            mode_label = "COMBINED" if (use_graph or use_ctp or use_ctstv or use_d3s) else "ADAPTIVE"
         else:
             alpha, beta, gamma = self.alpha, self.beta, self.gamma
-            active_modes = [m for m, u in [("GRAPH", use_graph), ("CTP", use_ctp), ("CTSTV", use_ctstv)] if u]
+            active_modes = [m for m, u in [("GRAPH", use_graph), ("CTP", use_ctp), ("CTSTV", use_ctstv), ("D3S", use_d3s)] if u]
             mode_label = "+".join(active_modes) if active_modes else "FIXED"
 
         base_risk = (
@@ -238,6 +249,12 @@ class RiskCalculator:
             headroom = max(0.0, 5.0 - progressive_risk)
             progressive_risk = progressive_risk + lambda_ctstv * headroom * s_t
 
+        if use_d3s and scaled_d3s_risk > 0.0:
+            lambda_d3s = self.d3s_weight
+            d_t = max(0.0, min(1.0, scaled_d3s_risk / 5.0))
+            headroom = max(0.0, 5.0 - progressive_risk)
+            progressive_risk = progressive_risk + lambda_d3s * headroom * d_t
+
         self.historical_risk = progressive_risk  # Update historical risk
 
         # Print calculation details
@@ -249,6 +266,8 @@ class RiskCalculator:
             print(f"  CTP Escalation (λ_ctp = {self.ctp_weight:.2f}, Scaled Risk = {scaled_ctp_risk:.4f})")
         if use_ctstv and scaled_ctstv_risk > 0.0:
             print(f"  CT-STV Escalation (λ_ctstv = {self.ctstv_weight:.2f}, Scaled Risk = {scaled_ctstv_risk:.4f})")
+        if use_d3s and scaled_d3s_risk > 0.0:
+            print(f"  D3S Escalation (λ_d3s = {self.d3s_weight:.2f}, Scaled Risk = {scaled_d3s_risk:.4f})")
         print(f"  Base Progressive Risk: {base_risk:.4f}")
         print(f"  Weights — α: {alpha:.4f}, β: {beta:.4f}, γ: {gamma:.4f}")
         print(f"  Historical Risk  (α * {historical_risk:.4f}): {alpha * historical_risk:.4f}")

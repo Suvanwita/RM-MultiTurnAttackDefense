@@ -29,6 +29,9 @@ from tca.counterfactual_prober import CounterfactualTrajectoryProber, CTPProbeRe
 # Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
 from tca.taint_virtualizer import CrossTurnTaintVirtualizer, VirtualPayloadResult
 
+# Novelty 3: Differential System-State Divergence (D3S)
+from tca.system_state_divergence import DifferentialStateDivergence, D3SDivergenceResult
+
 
 class ConversationAnalyzer:
     def __init__(self, config_path="config/config.yaml", llm_type="gpt"):
@@ -69,6 +72,10 @@ class ConversationAnalyzer:
         # Novelty 2: Cross-Turn Symbolic Taint Virtualizer
         self.taint_virtualizer = CrossTurnTaintVirtualizer(config=self.config)
 
+        # Novelty 3: Differential System-State Divergence Engine
+        self.d3s_engine = DifferentialStateDivergence(config=self.config)
+        self._d3s_history = []
+
     def clean_and_parse_content(self, content):
         """
         Cleans Markdown formatting and parses the content field as JSON.
@@ -103,6 +110,9 @@ class ConversationAnalyzer:
         self._ctp_history = []
         # Novelty 2: Reset CT-STV taint virtualizer per conversation
         self.taint_virtualizer.reset()
+        # Novelty 3: Reset D3S divergence engine per conversation
+        self.d3s_engine.reset()
+        self._d3s_history = []
 
         for i in range(1, len(conversation_pairs)):
             prev_pair = conversation_pairs[i - 1]
@@ -231,6 +241,24 @@ class ConversationAnalyzer:
             print(f"  Split Injection: {ctstv_result.is_split_injection} | Preemptive Block: {ctstv_result.trigger_preemptive_block}")
             print(f"  Explanation: {ctstv_result.explanation}")
 
+        # Novelty 3: Differential System-State Divergence (D3S)
+        d3s_result = self.d3s_engine.evaluate_turn(
+            turn_id=turn_num,
+            user_text=cur_human,
+            conversation_history=self._d3s_history,
+        )
+        self._d3s_history.append(cur_human)
+        scaled_d3s_risk = d3s_result.scaled_d3s_risk
+
+        if d3s_result.composite_d3s_risk > 0.20 or d3s_result.is_instruction_subverted:
+            print("\nDifferential System-State Divergence (D3S) Analysis:")
+            print(f"  KL Divergence D_KL: {d3s_result.kl_divergence:.4f}")
+            print(f"  P(Refusal | Isolated): {d3s_result.isolated_refusal_prob:.4f} vs P(Refusal | Full): {d3s_result.full_refusal_prob:.4f}")
+            print(f"  Refusal Inversion Delta: {d3s_result.refusal_inversion_delta:.4f}")
+            print(f"  Composite D3S Risk: {d3s_result.composite_d3s_risk:.4f} (Scaled [0-5]: {scaled_d3s_risk:.4f})")
+            print(f"  Instruction Subversion: {d3s_result.is_instruction_subverted} | Preemptive Block: {d3s_result.trigger_preemptive_block}")
+            print(f"  Explanation: {d3s_result.explanation}")
+
         # Intent Evolution Graph incremental update
         current_intent = self.intent_extractor.extract_from_text(turn_num, cur_human)
         self.intent_graph.add_turn(current_intent, text=cur_human)
@@ -278,6 +306,8 @@ class ConversationAnalyzer:
             scaled_ctp_risk=scaled_ctp_risk,
             # CT-STV risk
             scaled_ctstv_risk=scaled_ctstv_risk,
+            # D3S risk
+            scaled_d3s_risk=scaled_d3s_risk,
         )
         self.historical_risk = progressive_risk  # Update historical risk
         # Advance per-conversation turn state
@@ -292,6 +322,8 @@ class ConversationAnalyzer:
             ctp_reasoning=ctp_result.explanation,
             ctstv_preemptive_block=ctstv_result.trigger_preemptive_block,
             ctstv_reasoning=ctstv_result.explanation,
+            d3s_preemptive_block=d3s_result.trigger_preemptive_block,
+            d3s_reasoning=d3s_result.explanation,
         )
         print("\n" + "-" * 80)
         print("\nRisk Analysis Results:")
