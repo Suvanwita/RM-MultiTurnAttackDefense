@@ -219,27 +219,9 @@ class ConversationAnalyzer:
         self._ctp_history.append(cur_human)
         scaled_ctp_risk = ctp_result.scaled_ctp_risk
 
-        if ctp_result.composite_ctp_risk > 0.15 or ctp_result.is_adversarial_crescendo:
-            print("\nCounterfactual Trajectory Probing (CTP) Analysis:")
-            print(f"  Turn {turn_num} Raw Text: {cur_human[:80]}...")
-            print(f"  Neutralized Directive: {ctp_result.neutralized_text[:80]}...")
-            print(f"  Framing Dependency Ratio (FDR): {ctp_result.framing_dependency_ratio:.4f}")
-            print(f"  Refusal Drift: {ctp_result.refusal_drift:.4f} (Status: {ctp_result.canary_response_status})")
-            print(f"  Composite CTP Risk: {ctp_result.composite_ctp_risk:.4f} (Scaled [0-5]: {scaled_ctp_risk:.4f})")
-            print(f"  Adversarial Crescendo: {ctp_result.is_adversarial_crescendo} | Preemptive Block: {ctp_result.trigger_preemptive_block}")
-            print(f"  Explanation: {ctp_result.explanation}")
-
         # Novelty 2: Cross-Turn Symbolic Taint Virtualization (CT-STV)
         ctstv_result = self.taint_virtualizer.evaluate_turn(turn_id=turn_num, user_text=cur_human)
         scaled_ctstv_risk = ctstv_result.scaled_ctstv_risk
-
-        if ctstv_result.is_assembled or ctstv_result.is_split_injection or ctstv_result.ssim_score > 0.20:
-            print("\nCross-Turn Symbolic Taint Virtualization (CT-STV) Analysis:")
-            print(f"  Referenced Fragments: {ctstv_result.referenced_identifiers}")
-            print(f"  Materialized Payload: '{ctstv_result.materialized_payload[:100]}...'")
-            print(f"  SSIM Score: {ctstv_result.ssim_score:.4f} (Scaled [0-5]: {scaled_ctstv_risk:.4f})")
-            print(f"  Split Injection: {ctstv_result.is_split_injection} | Preemptive Block: {ctstv_result.trigger_preemptive_block}")
-            print(f"  Explanation: {ctstv_result.explanation}")
 
         # Novelty 3: Differential System-State Divergence (D3S)
         d3s_result = self.d3s_engine.evaluate_turn(
@@ -250,6 +232,36 @@ class ConversationAnalyzer:
         self._d3s_history.append(cur_human)
         scaled_d3s_risk = d3s_result.scaled_d3s_risk
 
+        # Multi-Turn Defense Invariants Summary across all 3 novelties
+        print("\nMulti-Turn Defense Invariant Status [Turn " + str(turn_num) + "]:")
+        ctp_status = "CRITICAL (Crescendo)" if ctp_result.is_adversarial_crescendo else ("ELEVATED" if ctp_result.composite_ctp_risk > 0.15 else "NORMAL")
+        ctstv_status = "CRITICAL (Split Injection)" if ctstv_result.is_split_injection else ("ASSEMBLED" if ctstv_result.is_assembled else "NORMAL")
+        d3s_status = "CRITICAL (Subverted)" if d3s_result.is_instruction_subverted else ("ELEVATED" if d3s_result.composite_d3s_risk > 0.20 else "NORMAL")
+        print(f"  [Novelty 1: CTP]    Status: {ctp_status:<22} | FDR: {ctp_result.framing_dependency_ratio:.2f} | Drift: {ctp_result.refusal_drift:.2f} | Scaled Risk: {scaled_ctp_risk:.2f}/5.0")
+        print(f"  [Novelty 2: CT-STV] Status: {ctstv_status:<22} | SSIM: {ctstv_result.ssim_score:.2f} | Bound Symbols: {len(self.taint_virtualizer.symbolic_registry)} | Scaled Risk: {scaled_ctstv_risk:.2f}/5.0")
+        print(f"  [Novelty 3: D3S]    Status: {d3s_status:<22} | D_KL: {d3s_result.kl_divergence:.2f} | Inversion Δ: {d3s_result.refusal_inversion_delta:.2f} | Scaled Risk: {scaled_d3s_risk:.2f}/5.0")
+
+        # Detailed Diagnostic: Novelty 1 (CTP)
+        if ctp_result.composite_ctp_risk > 0.15 or ctp_result.is_adversarial_crescendo:
+            print("\nCounterfactual Trajectory Probing (CTP) Analysis:")
+            print(f"  Turn {turn_num} Raw Text: {cur_human[:80]}...")
+            print(f"  Neutralized Directive: {ctp_result.neutralized_text[:80]}...")
+            print(f"  Framing Dependency Ratio (FDR): {ctp_result.framing_dependency_ratio:.4f}")
+            print(f"  Refusal Drift: {ctp_result.refusal_drift:.4f} (Status: {ctp_result.canary_response_status})")
+            print(f"  Composite CTP Risk: {ctp_result.composite_ctp_risk:.4f} (Scaled [0-5]: {scaled_ctp_risk:.4f})")
+            print(f"  Adversarial Crescendo: {ctp_result.is_adversarial_crescendo} | Preemptive Block: {ctp_result.trigger_preemptive_block}")
+            print(f"  Explanation: {ctp_result.explanation}")
+
+        # Detailed Diagnostic: Novelty 2 (CT-STV)
+        if ctstv_result.is_assembled or ctstv_result.is_split_injection or ctstv_result.ssim_score > 0.20:
+            print("\nCross-Turn Symbolic Taint Virtualization (CT-STV) Analysis:")
+            print(f"  Referenced Fragments: {ctstv_result.referenced_identifiers}")
+            print(f"  Materialized Payload: '{ctstv_result.materialized_payload[:100]}...'")
+            print(f"  SSIM Score: {ctstv_result.ssim_score:.4f} (Scaled [0-5]: {scaled_ctstv_risk:.4f})")
+            print(f"  Split Injection: {ctstv_result.is_split_injection} | Preemptive Block: {ctstv_result.trigger_preemptive_block}")
+            print(f"  Explanation: {ctstv_result.explanation}")
+
+        # Detailed Diagnostic: Novelty 3 (D3S)
         if d3s_result.composite_d3s_risk > 0.20 or d3s_result.is_instruction_subverted:
             print("\nDifferential System-State Divergence (D3S) Analysis:")
             print(f"  KL Divergence D_KL: {d3s_result.kl_divergence:.4f}")

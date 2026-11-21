@@ -104,18 +104,20 @@ Benchmark run on 77 multi-turn conversations (32 instruction subversion attacks 
 
 | Defense Method | Attack Success Rate (ASR) ↓ | Recall (Detection Rate) ↑ | Precision ↑ | F1 Score ↑ | Benign FPR ↓ | Overhead (ms/turn) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Original TCA (Fixed Weights)** | 100.0% | 0.00% | 0.00% | 0.0000 | **0.00%** | < 0.01 ms |
-| **D3S: KL Divergence Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.098 ms |
-| **D3S: Inversion Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.098 ms |
-| **Full D3S (Novelty 3)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.196 ms** |
+| **Original TCA (Strict Block Policy)\*** | 100.0% | 0.00% | 0.00% | 0.0000 | **0.00%** | < 0.01 ms |
+| **Original TCA (Warning Policy)\*** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | < 0.01 ms |
+| **D3S: KL Divergence Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.094 ms |
+| **D3S: Inversion Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.094 ms |
+| **Full D3S (Novelty 3)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.187 ms** |
+
+*\*Note on Evaluation Context: When evaluated strictly on `block_threshold` ($2.475$), baseline TCA reaches $R_t = 2.061$ at Turn 4, missing immediate blocking because the synthetic conversations terminate at 4 turns. However, under the system's `warn_threshold` ($1.65$), Original TCA successfully flags 100% of the attacks at Turn 4. D3S provides proactive generation-level divergence detection earlier at the emission boundary without waiting for cumulative risk escalation.*
 
 *Outputs saved to `results/d3s/metrics_comparison.csv` and `results/d3s/detection_delay.csv`.*
 
 ### Key Takeaways
-1. **100% Interception of Instruction Subversion:** Drops ASR from **100.0% (Original TCA) down to 0.00%**, blocking attacks where conversational context silences system refusal.
+1. **Generation-Level Interception:** Detects context-induced instruction hijacking at the generation boundary before token emission, dropping ASR to **0.00%**.
 2. **Zero False Positives ($\text{FPR} = 0.00\%$):** On 45 deep multi-turn benign dialogues (PostgreSQL indexing, Apollo space program, Python asyncio), D3S produced zero false alarms because benign context does not induce refusal inversion.
-3. **Sub-Millisecond Overhead:** Average per-turn analysis latency is **0.196 ms**.
-
+3. **Sub-Millisecond Overhead:** Average per-turn analysis latency is **0.187 ms**.
 ---
 
 ## 5. Reproduction Commands

@@ -154,11 +154,12 @@ def generate_benign_evaluation_dataset(seed: int = 42) -> List[Dict[str, Any]]:
     return expanded
 
 
-def load_attack_conversations(config: TCAConfig, max_rows: int = 40) -> List[Dict[str, Any]]:
+def load_attack_conversations(config: TCAConfig, max_rows: int = 40, seed: int = 42) -> List[Dict[str, Any]]:
     """
     Loads both canonical multi-turn Crescendo jailbreak attacks
     and multi-turn rows from the HarmBench dataset.
     """
+    rng = np.random.RandomState(seed)
     attack_convs = []
 
     # 1. Canonical Crescendo / Framing Escalation Attacks
@@ -220,13 +221,13 @@ def load_attack_conversations(config: TCAConfig, max_rows: int = 40) -> List[Dic
             depth_ratio = (t_idx + 1) / len(pairs)
 
             if is_final_turn:
-                ir = float(np.random.uniform(3.8, 4.8))
+                ir = float(rng.uniform(3.8, 4.8))
                 pr = 0.5
             elif depth_ratio > 0.5:
-                ir = float(np.random.uniform(2.2, 3.5))
+                ir = float(rng.uniform(2.2, 3.5))
                 pr = 0.3
             else:
-                ir = float(np.random.uniform(1.0, 2.0))
+                ir = float(rng.uniform(1.0, 2.0))
                 pr = 0.0
 
             turns.append({

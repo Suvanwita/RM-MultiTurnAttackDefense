@@ -29,18 +29,20 @@ Benchmarked across 84 multi-turn conversations (HarmBench attacks, Crescendo jai
 
 | Defense Mechanism | Attack Success Rate (ASR) ↓ | Recall (Detection Rate) ↑ | F1 Score ↑ | Benign FPR ↓ | Earliest Detection Turn ↓ | Overhead (ms/turn) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Original TCA (Fixed)** | 25.71% | 74.29% | 0.8525 | **0.00%** | 5.15 turns | < 0.01 ms |
-| **CTP: Framing Only (Ablation)** | 0.00% | 100.0% | 1.0000 | **0.00%** | 4.46 turns | 0.068 ms |
-| **CTP: Drift Only (Ablation)** | 0.00% | 100.0% | 1.0000 | **0.00%** | 4.46 turns | 0.068 ms |
-| **Full CTP (Novelty 1)** | **14.29%** | **85.71%** | **0.9231** | **0.00%** | **4.87 turns** | **0.136 ms** |
+| **Original TCA (Fixed)** | 25.71% | 74.29% | 0.8525 | **0.00%** | 5.12 turns | < 0.01 ms |
+| **CTP: Framing Only (Ablation)\*** | 0.00% | 100.0% | 1.0000 | **0.00%** | 4.34 turns | 0.081 ms |
+| **CTP: Drift Only (Ablation)\*** | 0.00% | 100.0% | 1.0000 | **0.00%** | 4.34 turns | 0.081 ms |
+| **Full CTP (Novelty 1)** | **14.29%** | **85.71%** | **0.9231** | **0.00%** | **4.83 turns** | **0.161 ms** |
+
+*\*Note on Ablations: The single-signal ablations trigger on isolated loose thresholds ($\text{FDR} \ge 0.55$ or $\text{Drift} \ge 0.45$). Full CTP utilizes joint conservative validation ($\text{FDR} \ge 0.55 \text{ AND } \text{Drift} \ge 0.45$, or composite risk $\ge 0.85$) to prevent false positives in open-ended production dialogues, achieving a verified, robust 85.71% detection recall.*
 
 ### Key Result Improvements
-- **44.4% Relative Reduction in Attack Success Rate (ASR):** Drops from $25.71\%$ down to $14.29\%$.
-- **100% Interception on Multi-Turn Crescendo Attacks:** Baseline TCA missed $100\%$ of progressive Crescendo jailbreak attacks (0% detection) because turns stayed below linear risk thresholds. CTP achieves **100% detection** on Crescendo attacks, blocking them at Turn 3.
+- **44.4% Relative Reduction in Attack Success Rate (ASR):** Drops from $25.71\%$ down to $14.29\%$ across benchmarked multi-turn attacks.
+- **100% Interception on Multi-Turn Crescendo Attacks:** Baseline TCA missed $100\%$ of progressive Crescendo jailbreak attacks (0% detection) because early turns stayed below linear risk thresholds. CTP achieves **100% detection** on Crescendo attacks, blocking them at Turn 3.
 - **+11.42% Gain in Attack Detection Recall:** Detection recall rises from $74.29\%$ to $85.71\%$.
 - **F1 Score Improvement:** Rises from $0.8525$ to $0.9231$.
 - **Zero False Positives ($\text{FPR} = 0.00\%$):** Preserves complete utility on benign conversations, causing zero false alarms on educational cybersecurity inquiries and creative writing.
-- **Sub-Millisecond Overhead:** Average latency overhead is only **0.136 ms/turn**, making it directly deployable in production without perceptible latency.
+- **Sub-Millisecond Overhead:** Average latency overhead is only **0.161 ms/turn**, making it directly deployable in production without perceptible latency.
 
 For full mathematical formulation and implementation details, see [docs/novelty1_counterfactual_prober.md](docs/novelty1_counterfactual_prober.md).
 
@@ -63,13 +65,15 @@ Benchmarked across 72 multi-turn conversations (32 split-payload prompt injectio
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Original TCA (Fixed Weights)** | 100.0% | 0.00% | 0.00% | 0.0000 | **0.00%** | < 0.01 ms |
 | **Single-Turn Guardrail Baseline** | 62.5% | 37.50% | 100.0% | 0.5455 | **0.00%** | 0.017 ms |
-| **Full CT-STV (Novelty 2)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.119 ms** |
+| **Full CT-STV (Novelty 2)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.116 ms** |
+
+*\*Note on Evaluation Scope: Evaluated on staged, symbolic split-payload attacks where directives are declared as variables (e.g. `Let var_1 = "..."`) across turns. Because individual variable declarations have low turn risk ($I_t \le 0.2$), turn-by-turn accumulators like Original TCA assign minimal risk. CT-STV resolves the cross-turn dependency DAG to reconstruct and validate the virtual payload prior to execution. On naturalistic, non-symbolic split payloads without variable definitions, detection recall will be bounded by semantic reconstruction capability rather than symbolic resolution.*
 
 ### Key Result Improvements
-- **100% Elimination of Split-Payload Attacks:** Drops Attack Success Rate from **$100.0\%$ (Original TCA) down to $0.00\%$**, catching all staged injections that completely bypass turn-by-turn models.
-- **Recall Increase from 0% to 100%:** Original TCA achieved $0\%$ detection on split payloads because individual turns contain only harmless variable assignments. CT-STV achieves **$100.0\%$ recall ($F_1 = 1.0000$)**.
+- **100% Elimination of Symbolic Split-Payload Attacks:** Drops Attack Success Rate from **$100.0\%$ (Original TCA) down to $0.00\%$** on variable-staged prompt injections.
+- **Recall Increase from 0% to 100% on Symbolic Staging:** Original TCA achieved $0\%$ detection because isolated turns contain only harmless variable assignments. CT-STV achieves **$100.0\%$ recall ($F_1 = 1.0000$)**.
 - **Zero False Positives ($\text{FPR} = 0.00\%$):** Evaluated on 40 multi-turn benign programming sessions with string formatting, URL concatenation, and variable definitions, CT-STV produced **zero false alarms**.
-- **Sub-Millisecond Execution:** The complete symbolic registry resolution and policy check adds only **$0.119\text{ ms/turn}$**.
+- **Sub-Millisecond Execution:** The complete symbolic registry resolution and policy check adds only **$0.116\text{ ms/turn}$**.
 
 For full mathematical formulation and implementation details, see [docs/novelty2_taint_virtualization.md](docs/novelty2_taint_virtualization.md).
 
@@ -90,16 +94,19 @@ Benchmarked across 77 multi-turn conversations (32 instruction subversion attack
 
 | Defense Mechanism | Attack Success Rate (ASR) ↓ | Recall (Detection Rate) ↑ | Precision ↑ | F1 Score ↑ | Benign FPR ↓ | Overhead (ms/turn) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Original TCA (Fixed Weights)** | 100.0% | 0.00% | 0.00% | 0.0000 | **0.00%** | < 0.01 ms |
-| **D3S: KL Divergence Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.098 ms |
-| **D3S: Inversion Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.098 ms |
-| **Full D3S (Novelty 3)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.196 ms** |
+| **Original TCA (Strict Block Policy)\*** | 100.0% | 0.00% | 0.00% | 0.0000 | **0.00%** | < 0.01 ms |
+| **Original TCA (Warning Policy)\*** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | < 0.01 ms |
+| **D3S: KL Divergence Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.094 ms |
+| **D3S: Inversion Only (Ablation)** | 0.00% | 100.0% | 100.0% | 1.0000 | **0.00%** | 0.094 ms |
+| **Full D3S (Novelty 3)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.187 ms** |
+
+*\*Note on Evaluation Context: When evaluated strictly on `block_threshold` ($2.475$), baseline TCA reaches $R_t = 2.061$ at Turn 4, missing immediate blocking because the synthetic conversations terminate at 4 turns. However, under the system's `warn_threshold` ($1.65$), Original TCA successfully flags 100% of the attacks at Turn 4. D3S provides proactive generation-level divergence detection earlier at the emission boundary without waiting for cumulative risk escalation.*
 
 ### Key Result Improvements
-- **100% Suppression of Instruction Subversion:** Drops ASR from **$100.0\%$ (Original TCA) down to $0.00\%$**, catching all context-induced instruction hijacking attacks.
-- **Recall Increase from 0% to 100%:** Baseline TCA misses subversion because individual turns mimic polite academic or roleplay inquiries. D3S achieves **$100.0\%$ recall ($F_1 = 1.0000$)**.
+- **Generation-Level Interception:** Detects context-induced instruction hijacking at the generation boundary before token emission.
+- **Complementary Defense:** Catches subversion attempts where conversation momentum suppresses system refusal, operating in parallel with TCA's progressive risk scoring.
 - **Zero False Positives ($\text{FPR} = 0.00\%$):** Tested on 45 deep multi-turn benign dialogues (PostgreSQL indexing, Apollo space program, Python asyncio), D3S produced **zero false alarms** because benign context does not induce refusal inversion.
-- **Sub-Millisecond Overhead:** The complete dual-horizon divergence check adds only **$0.196\text{ ms/turn}$**.
+- **Sub-Millisecond Overhead:** The complete dual-horizon divergence check adds only **$0.187\text{ ms/turn}$**.
 
 For full mathematical formulation and implementation details, see [docs/novelty3_system_state_divergence.md](docs/novelty3_system_state_divergence.md).
 

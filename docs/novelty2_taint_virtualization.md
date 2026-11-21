@@ -93,14 +93,16 @@ Benchmark run on 72 multi-turn interactions (32 split-payload injection attacks 
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Original TCA (Fixed Weights)** | 100.0% | 0.00% | 0.00% | 0.0000 | **0.00%** | < 0.01 ms |
 | **Single-Turn Guardrail Baseline** | 62.5% | 37.50% | 100.0% | 0.5455 | **0.00%** | 0.017 ms |
-| **Full CT-STV (Novelty 2)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.119 ms** |
+| **Full CT-STV (Novelty 2)** | **0.00%** | **100.0%** | **100.0%** | **1.0000** | **0.00%** | **0.116 ms** |
+
+*\*Note on Evaluation Scope: Evaluated on staged, symbolic split-payload attacks where directives are declared as variables (e.g. `Let var_1 = "..."`) across turns. Because individual variable declarations have low turn risk ($I_t \le 0.2$), turn-by-turn accumulators like Original TCA assign minimal risk. CT-STV resolves the cross-turn dependency DAG to reconstruct and validate the virtual payload prior to execution. On naturalistic, non-symbolic split payloads without variable definitions, detection recall will be bounded by semantic reconstruction capability rather than symbolic resolution.*
 
 *Outputs saved to `results/ctstv/metrics_comparison.csv` and `results/ctstv/split_payload_benchmark.csv`.*
 
 ### Key Takeaways
-1. **Elimination of Split-Payload Vulnerability:** Baseline TCA completely failed against split-payload attacks (**100% ASR, 0% Recall**), while Single-Turn Guardrails caught only 37.5% of naive attacks. CT-STV achieved **100.0% Recall and 0.0% ASR**.
+1. **Elimination of Symbolic Split-Payload Vulnerability:** Baseline TCA completely failed against split-payload attacks (**100% ASR, 0% Recall**) because variable assignments carry negligible turn risk, while Single-Turn Guardrails caught only 37.5% of naive attacks. CT-STV achieved **100.0% Recall and 0.0% ASR** on staged variables.
 2. **Zero False Positives:** On 40 multi-turn benign programming sessions with string formatting, URL concatenation, and variable definitions, CT-STV achieved **0.00% False Positive Rate**.
-3. **Sub-Millisecond Overhead:** Complete symbolic tracking and DAG materialization requires only **0.119 ms/turn**.
+3. **Sub-Millisecond Overhead:** Complete symbolic tracking and DAG materialization requires only **0.116 ms/turn**.
 
 ---
 
