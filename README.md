@@ -155,13 +155,20 @@ For full mathematical formulation and implementation details, see [docs/novelty3
 
 ## Usage
 
-### 1. Run the Conversation Analyzer (Interactive Mode)
+### 1. Run Live Interactive Chat Mode (Type Your Own Custom Prompts)
+You can type custom multi-turn inputs directly into the runtime console to test the defenses live:
 ```bash
-python intent/conversation_analyzer.py
+python intent/conversation_analyzer.py --live
 ```
-You will be prompted to select an LLM (`gpt`, `claude`, `gemini`, or `mock`), select an attack tactic, and specify how many rows to analyze.
+*(Or run `python intent/conversation_analyzer.py` without flags and select Option `0. [LIVE CHAT]` from the menu).*
 
-### 2. Run with Command-Line Arguments
+Commands available during the live session:
+- Type any prompt to evaluate it in real time across CTP, CT-STV, D3S, Intent Graph, and Progressive Risk.
+- `status`: Displays active defense invariants, bound taint symbols, and graph metrics.
+- `reset` : Clears conversation history and resets risk score to 0.0 for a new session.
+- `exit`  : Ends the live session.
+
+### 2. Run Dataset Replay Mode (Pre-built HarmBench Rows)
 ```bash
 python intent/conversation_analyzer.py --llm mock --tactic "Direct Request" --rows 2
 ```

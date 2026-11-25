@@ -33,6 +33,35 @@ from tca.taint_virtualizer import CrossTurnTaintVirtualizer, VirtualPayloadResul
 from tca.system_state_divergence import DifferentialStateDivergence, D3SDivergenceResult
 
 
+class TerminalColors:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+
+    # Novelty-Specific Color Schemes
+    CTP = "\033[96m"         # Bright Cyan (Novelty 1: Counterfactual Trajectory Probing)
+    CTP_BOLD = "\033[1;96m"
+    
+    CTSTV = "\033[95m"       # Bright Magenta (Novelty 2: Cross-Turn Symbolic Taint Virtualization)
+    CTSTV_BOLD = "\033[1;95m"
+    
+    D3S = "\033[93m"         # Bright Yellow (Novelty 3: Differential System-State Divergence)
+    D3S_BOLD = "\033[1;93m"
+    
+    GRAPH = "\033[94m"       # Bright Blue (Intent Evolution Graph)
+    GRAPH_BOLD = "\033[1;94m"
+
+    # Decisions & Alerts
+    RED = "\033[91m"
+    RED_BOLD = "\033[1;91m"
+    GREEN = "\033[92m"
+    GREEN_BOLD = "\033[1;92m"
+    YELLOW = "\033[93m"
+    YELLOW_BOLD = "\033[1;93m"
+    WHITE_BOLD = "\033[1;97m"
+    GRAY = "\033[90m"
+
+
 class ConversationAnalyzer:
     def __init__(self, config_path="config/config.yaml", llm_type="gpt"):
         load_dotenv(find_dotenv())
@@ -233,45 +262,58 @@ class ConversationAnalyzer:
         scaled_d3s_risk = d3s_result.scaled_d3s_risk
 
         # Multi-Turn Defense Invariants Summary across all 3 novelties
-        print("\nMulti-Turn Defense Invariant Status [Turn " + str(turn_num) + "]:")
+        print(f"\n{TerminalColors.WHITE_BOLD}Multi-Turn Defense Invariant Status [Turn {turn_num}]:{TerminalColors.RESET}")
+        
         ctp_status = "CRITICAL (Crescendo)" if ctp_result.is_adversarial_crescendo else ("ELEVATED" if ctp_result.composite_ctp_risk > 0.15 else "NORMAL")
+        ctp_color = TerminalColors.RED_BOLD if ctp_result.is_adversarial_crescendo else (TerminalColors.YELLOW_BOLD if ctp_result.composite_ctp_risk > 0.15 else TerminalColors.GREEN)
+        
         ctstv_status = "CRITICAL (Split Injection)" if ctstv_result.is_split_injection else ("ASSEMBLED" if ctstv_result.is_assembled else "NORMAL")
+        ctstv_color = TerminalColors.RED_BOLD if ctstv_result.is_split_injection else (TerminalColors.YELLOW_BOLD if ctstv_result.is_assembled else TerminalColors.GREEN)
+        
         d3s_status = "CRITICAL (Subverted)" if d3s_result.is_instruction_subverted else ("ELEVATED" if d3s_result.composite_d3s_risk > 0.20 else "NORMAL")
-        print(f"  [Novelty 1: CTP]    Status: {ctp_status:<22} | FDR: {ctp_result.framing_dependency_ratio:.2f} | Drift: {ctp_result.refusal_drift:.2f} | Scaled Risk: {scaled_ctp_risk:.2f}/5.0")
-        print(f"  [Novelty 2: CT-STV] Status: {ctstv_status:<22} | SSIM: {ctstv_result.ssim_score:.2f} | Bound Symbols: {len(self.taint_virtualizer.symbolic_registry)} | Scaled Risk: {scaled_ctstv_risk:.2f}/5.0")
-        print(f"  [Novelty 3: D3S]    Status: {d3s_status:<22} | D_KL: {d3s_result.kl_divergence:.2f} | Inversion Δ: {d3s_result.refusal_inversion_delta:.2f} | Scaled Risk: {scaled_d3s_risk:.2f}/5.0")
+        d3s_color = TerminalColors.RED_BOLD if d3s_result.is_instruction_subverted else (TerminalColors.YELLOW_BOLD if d3s_result.composite_d3s_risk > 0.20 else TerminalColors.GREEN)
 
-        # Detailed Diagnostic: Novelty 1 (CTP)
+        print(f"  {TerminalColors.CTP_BOLD}[Novelty 1: CTP]{TerminalColors.RESET}    Status: {ctp_color}{ctp_status:<22}{TerminalColors.RESET} | {TerminalColors.CTP}FDR: {ctp_result.framing_dependency_ratio:.2f} | Drift: {ctp_result.refusal_drift:.2f} | Scaled Risk: {scaled_ctp_risk:.2f}/5.0{TerminalColors.RESET}")
+        print(f"  {TerminalColors.CTSTV_BOLD}[Novelty 2: CT-STV]{TerminalColors.RESET} Status: {ctstv_color}{ctstv_status:<22}{TerminalColors.RESET} | {TerminalColors.CTSTV}SSIM: {ctstv_result.ssim_score:.2f} | Bound Symbols: {len(self.taint_virtualizer.symbolic_registry)} | Scaled Risk: {scaled_ctstv_risk:.2f}/5.0{TerminalColors.RESET}")
+        print(f"  {TerminalColors.D3S_BOLD}[Novelty 3: D3S]{TerminalColors.RESET}    Status: {d3s_color}{d3s_status:<22}{TerminalColors.RESET} | {TerminalColors.D3S}D_KL: {d3s_result.kl_divergence:.2f} | Inversion Δ: {d3s_result.refusal_inversion_delta:.2f} | Scaled Risk: {scaled_d3s_risk:.2f}/5.0{TerminalColors.RESET}")
+
+        # Detailed Diagnostic: Novelty 1 (CTP) - CYAN
         if ctp_result.composite_ctp_risk > 0.15 or ctp_result.is_adversarial_crescendo:
-            print("\nCounterfactual Trajectory Probing (CTP) Analysis:")
-            print(f"  Turn {turn_num} Raw Text: {cur_human[:80]}...")
-            print(f"  Neutralized Directive: {ctp_result.neutralized_text[:80]}...")
-            print(f"  Framing Dependency Ratio (FDR): {ctp_result.framing_dependency_ratio:.4f}")
-            print(f"  Refusal Drift: {ctp_result.refusal_drift:.4f} (Status: {ctp_result.canary_response_status})")
-            print(f"  Composite CTP Risk: {ctp_result.composite_ctp_risk:.4f} (Scaled [0-5]: {scaled_ctp_risk:.4f})")
-            print(f"  Adversarial Crescendo: {ctp_result.is_adversarial_crescendo} | Preemptive Block: {ctp_result.trigger_preemptive_block}")
-            print(f"  Explanation: {ctp_result.explanation}")
+            print(f"\n{TerminalColors.CTP_BOLD}┌──────────────────────────────────────────────────────────────────────────────┐{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP_BOLD}│ Counterfactual Trajectory Probing (CTP) Analysis [Novelty 1]                 │{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP_BOLD}└──────────────────────────────────────────────────────────────────────────────┘{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP}  Turn {turn_num} Raw Text: {cur_human[:80]}...{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP}  Neutralized Directive: {ctp_result.neutralized_text[:80]}...{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP}  Framing Dependency Ratio (FDR): {ctp_result.framing_dependency_ratio:.4f}{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP}  Refusal Drift: {ctp_result.refusal_drift:.4f} (Status: {ctp_result.canary_response_status}){TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP}  Composite CTP Risk: {ctp_result.composite_ctp_risk:.4f} (Scaled [0-5]: {scaled_ctp_risk:.4f}){TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP_BOLD}  Adversarial Crescendo: {ctp_result.is_adversarial_crescendo} | Preemptive Block: {ctp_result.trigger_preemptive_block}{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTP}  Explanation: {ctp_result.explanation}{TerminalColors.RESET}")
 
-        # Detailed Diagnostic: Novelty 2 (CT-STV)
+        # Detailed Diagnostic: Novelty 2 (CT-STV) - MAGENTA
         if ctstv_result.is_assembled or ctstv_result.is_split_injection or ctstv_result.ssim_score > 0.20:
-            print("\nCross-Turn Symbolic Taint Virtualization (CT-STV) Analysis:")
-            print(f"  Referenced Fragments: {ctstv_result.referenced_identifiers}")
-            print(f"  Materialized Payload: '{ctstv_result.materialized_payload[:100]}...'")
-            print(f"  SSIM Score: {ctstv_result.ssim_score:.4f} (Scaled [0-5]: {scaled_ctstv_risk:.4f})")
-            print(f"  Split Injection: {ctstv_result.is_split_injection} | Preemptive Block: {ctstv_result.trigger_preemptive_block}")
-            print(f"  Explanation: {ctstv_result.explanation}")
+            print(f"\n{TerminalColors.CTSTV_BOLD}┌──────────────────────────────────────────────────────────────────────────────┐{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV_BOLD}│ Cross-Turn Symbolic Taint Virtualization (CT-STV) Analysis [Novelty 2]       │{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV_BOLD}└──────────────────────────────────────────────────────────────────────────────┘{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV}  Referenced Fragments: {ctstv_result.referenced_identifiers}{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV}  Materialized Payload: '{ctstv_result.materialized_payload[:100]}...'{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV}  SSIM Score: {ctstv_result.ssim_score:.4f} (Scaled [0-5]: {scaled_ctstv_risk:.4f}){TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV_BOLD}  Split Injection: {ctstv_result.is_split_injection} | Preemptive Block: {ctstv_result.trigger_preemptive_block}{TerminalColors.RESET}")
+            print(f"{TerminalColors.CTSTV}  Explanation: {ctstv_result.explanation}{TerminalColors.RESET}")
 
-        # Detailed Diagnostic: Novelty 3 (D3S)
+        # Detailed Diagnostic: Novelty 3 (D3S) - YELLOW
         if d3s_result.composite_d3s_risk > 0.20 or d3s_result.is_instruction_subverted:
-            print("\nDifferential System-State Divergence (D3S) Analysis:")
-            print(f"  KL Divergence D_KL: {d3s_result.kl_divergence:.4f}")
-            print(f"  P(Refusal | Isolated): {d3s_result.isolated_refusal_prob:.4f} vs P(Refusal | Full): {d3s_result.full_refusal_prob:.4f}")
-            print(f"  Refusal Inversion Delta: {d3s_result.refusal_inversion_delta:.4f}")
-            print(f"  Composite D3S Risk: {d3s_result.composite_d3s_risk:.4f} (Scaled [0-5]: {scaled_d3s_risk:.4f})")
-            print(f"  Instruction Subversion: {d3s_result.is_instruction_subverted} | Preemptive Block: {d3s_result.trigger_preemptive_block}")
-            print(f"  Explanation: {d3s_result.explanation}")
+            print(f"\n{TerminalColors.D3S_BOLD}┌──────────────────────────────────────────────────────────────────────────────┐{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S_BOLD}│ Differential System-State Divergence (D3S) Analysis [Novelty 3]              │{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S_BOLD}└──────────────────────────────────────────────────────────────────────────────┘{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S}  KL Divergence D_KL: {d3s_result.kl_divergence:.4f}{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S}  P(Refusal | Isolated): {d3s_result.isolated_refusal_prob:.4f} vs P(Refusal | Full): {d3s_result.full_refusal_prob:.4f}{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S}  Refusal Inversion Delta: {d3s_result.refusal_inversion_delta:.4f}{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S}  Composite D3S Risk: {d3s_result.composite_d3s_risk:.4f} (Scaled [0-5]: {scaled_d3s_risk:.4f}){TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S_BOLD}  Instruction Subversion: {d3s_result.is_instruction_subverted} | Preemptive Block: {d3s_result.trigger_preemptive_block}{TerminalColors.RESET}")
+            print(f"{TerminalColors.D3S}  Explanation: {d3s_result.explanation}{TerminalColors.RESET}")
 
-        # Intent Evolution Graph incremental update
+        # Intent Evolution Graph incremental update - BLUE
         current_intent = self.intent_extractor.extract_from_text(turn_num, cur_human)
         self.intent_graph.add_turn(current_intent, text=cur_human)
         detected_rels = self.relationship_detector.detect_all_relationships(current_intent, self._intent_history)
@@ -287,18 +329,20 @@ class ConversationAnalyzer:
         scaled_graph_risk = graph_analysis.features.scaled_graph_risk
         self._intent_history.append(current_intent)
 
-        # Log Graph features
+        # Log Graph features - BLUE
         if graph_analysis.features.composite_graph_risk > 0.0 or detected_rels:
-            print("\nIntent Evolution Graph Analysis:")
-            print(f"  Turn Intent: {current_intent.intent} [Action: {current_intent.requested_action}, Target: {current_intent.target}]")
-            print(f"  Composite Graph Risk (G_t): {graph_analysis.features.composite_graph_risk:.4f} (Scaled [0-5]: {scaled_graph_risk:.4f})")
-            print(f"  Escalation Score: {graph_analysis.features.intent_escalation_score:.4f} | Dependency: {graph_analysis.features.cross_turn_dependency_score:.4f}")
-            print(f"  Suspicious Conf: {graph_analysis.features.suspicious_relationship_confidence:.4f} | Reframing: {graph_analysis.features.reframing_frequency:.4f}")
-            print(f"  Explanation: {graph_analysis.explanation}")
+            print(f"\n{TerminalColors.GRAPH_BOLD}┌──────────────────────────────────────────────────────────────────────────────┐{TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH_BOLD}│ Intent Evolution Graph Analysis                                              │{TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH_BOLD}└──────────────────────────────────────────────────────────────────────────────┘{TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH}  Turn Intent: {current_intent.intent} [Action: {current_intent.requested_action}, Target: {current_intent.target}]{TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH}  Composite Graph Risk (G_t): {graph_analysis.features.composite_graph_risk:.4f} (Scaled [0-5]: {scaled_graph_risk:.4f}){TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH}  Escalation Score: {graph_analysis.features.intent_escalation_score:.4f} | Dependency: {graph_analysis.features.cross_turn_dependency_score:.4f}{TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH}  Suspicious Conf: {graph_analysis.features.suspicious_relationship_confidence:.4f} | Reframing: {graph_analysis.features.reframing_frequency:.4f}{TerminalColors.RESET}")
+            print(f"{TerminalColors.GRAPH}  Explanation: {graph_analysis.explanation}{TerminalColors.RESET}")
             if detected_rels:
-                print("  Discovered Relationships:")
+                print(f"{TerminalColors.GRAPH}  Discovered Relationships:{TerminalColors.RESET}")
                 for r in detected_rels:
-                    print(f"    - Turn {r.source_turn} -> Turn {r.target_turn}: {r.relationship_type} (conf={r.confidence:.2f})")
+                    print(f"{TerminalColors.GRAPH}    - Turn {r.source_turn} -> Turn {r.target_turn}: {r.relationship_type} (conf={r.confidence:.2f}){TerminalColors.RESET}")
 
         progressive_risk = self.risk_calculator.calculate_progressive_risk(
             self.historical_risk,
@@ -337,16 +381,143 @@ class ConversationAnalyzer:
             d3s_preemptive_block=d3s_result.trigger_preemptive_block,
             d3s_reasoning=d3s_result.explanation,
         )
-        print("\n" + "-" * 80)
-        print("\nRisk Analysis Results:")
-        print("Decision:", decision["decision"].upper())
-        print("Message:", decision["message"])
-        print("Historical Risk:", decision["historical_risk"])
-        print("Current Pattern risk:", pattern_risk)
-        print("Progressive Risk:", decision["progressive_risk"], "Threshold: ", "Block", self.config.risk.block_threshold, "Warn", self.config.risk.warn_threshold)
-        print("Reasoning:", decision["reasoning"])
-        print("\n" + "-" * 80)
+
+        dec_str = decision["decision"].upper()
+        if dec_str == "BLOCK":
+            dec_color = TerminalColors.RED_BOLD
+        elif dec_str == "WARN":
+            dec_color = TerminalColors.YELLOW_BOLD
+        else:
+            dec_color = TerminalColors.GREEN_BOLD
+
+        print(f"\n{TerminalColors.WHITE_BOLD}┌──────────────────────────────────────────────────────────────────────────────┐{TerminalColors.RESET}")
+        print(f"{TerminalColors.WHITE_BOLD}│ Security Decision Engine Analysis                                            │{TerminalColors.RESET}")
+        print(f"{TerminalColors.WHITE_BOLD}└──────────────────────────────────────────────────────────────────────────────┘{TerminalColors.RESET}")
+        print(f"  {TerminalColors.WHITE_BOLD}Decision:{TerminalColors.RESET} {dec_color}{dec_str}{TerminalColors.RESET}")
+        print(f"  {TerminalColors.WHITE_BOLD}Message:{TerminalColors.RESET} {decision['message']}")
+        print(f"  {TerminalColors.WHITE_BOLD}Historical Risk:{TerminalColors.RESET} {decision['historical_risk']:.4f}")
+        print(f"  {TerminalColors.WHITE_BOLD}Pattern Risk:{TerminalColors.RESET} {pattern_risk:.4f}")
+        print(f"  {TerminalColors.WHITE_BOLD}Progressive Risk:{TerminalColors.RESET} {dec_color}{decision['progressive_risk']:.4f}{TerminalColors.RESET} (Thresholds: Block {self.config.risk.block_threshold}, Warn {self.config.risk.warn_threshold})")
+        print(f"  {TerminalColors.WHITE_BOLD}Reasoning:{TerminalColors.RESET} {decision['reasoning']}")
+        print(f"{TerminalColors.WHITE_BOLD}────────────────────────────────────────────────────────────────────────────────{TerminalColors.RESET}")
         return decision
+
+    async def analyze_live_session(self):
+        """
+        Interactive live chat mode where users can enter their own custom multi-turn
+        prompts directly in real time. Tests TCA defenses, Intent Evolution Graph,
+        CTP (Novelty 1), CT-STV (Novelty 2), and D3S (Novelty 3).
+        """
+        print("\n" + "=" * 80)
+        print("TCA MULTI-TURN DEFENSE: LIVE INTERACTIVE RUNTIME SESSION")
+        print("=" * 80)
+        print("Enter your own prompts turn-by-turn. The defense pipeline evaluates:")
+        print("  - Novelty 1 (CTP): Counterfactual Trajectory Probing & Refusal Drift")
+        print("  - Novelty 2 (CT-STV): Cross-Turn Symbolic Taint Virtualization (Split-Payload)")
+        print("  - Novelty 3 (D3S): Differential System-State Divergence (KL Divergence)")
+        print("  - Intent Evolution Graph & Progressive Risk Engine")
+        print("\nCommands:")
+        print("  'exit' or 'quit' : End the live interactive session")
+        print("  'reset'          : Clear conversation history and reset risk to 0")
+        print("  'status'         : Display active defense state and bound symbols")
+        print("=" * 80 + "\n")
+
+        self.historical_risk = 0.0
+        self._prev_interaction_risk = 0.0
+        self._turn_index = 0
+        self.intent_graph = IntentEvolutionGraph(conversation_id="live_interactive_session")
+        self._intent_history = []
+        self.ctp_prober.reset()
+        self._ctp_history = []
+        self.taint_virtualizer.reset()
+        self.d3s_engine.reset()
+        self._d3s_history = []
+
+        history_pairs = []
+        last_assistant_msg = "You are a helpful AI Assistant!"
+
+        while True:
+            turn_num = self._turn_index + 1
+            try:
+                user_input = input(f"\n{TerminalColors.GREEN_BOLD}[Turn {turn_num}] User > {TerminalColors.RESET}").strip()
+            except (KeyboardInterrupt, EOFError):
+                print(f"\n{TerminalColors.YELLOW}Exiting live session.{TerminalColors.RESET}")
+                break
+
+            if not user_input:
+                continue
+
+            cmd = user_input.lower()
+            if cmd in ("exit", "quit", "q"):
+                print(f"\n{TerminalColors.YELLOW}Live session ended by user.{TerminalColors.RESET}")
+                break
+
+            if cmd == "reset":
+                self.historical_risk = 0.0
+                self._prev_interaction_risk = 0.0
+                self._turn_index = 0
+                self.intent_graph = IntentEvolutionGraph(conversation_id="live_interactive_session")
+                self._intent_history = []
+                self.ctp_prober.reset()
+                self._ctp_history = []
+                self.taint_virtualizer.reset()
+                self.d3s_engine.reset()
+                self._d3s_history = []
+                history_pairs.clear()
+                last_assistant_msg = "You are a helpful AI Assistant!"
+                print(f"\n{TerminalColors.GREEN}[RESET] Conversation history cleared. Progressive risk reset to 0.0.{TerminalColors.RESET}")
+                continue
+
+            if cmd == "status":
+                print(f"\n{TerminalColors.WHITE_BOLD}--- Defense Status [Turn {turn_num}] ---{TerminalColors.RESET}")
+                print(f"Historical Risk: {self.historical_risk:.4f} / 5.0")
+                print(f"{TerminalColors.CTSTV}Active Taint Symbols in CT-STV: {list(self.taint_virtualizer.symbolic_registry.keys())}{TerminalColors.RESET}")
+                print(f"{TerminalColors.CTP}CTP Trajectory Depth: {len(self._ctp_history)} turns{TerminalColors.RESET}")
+                print(f"{TerminalColors.D3S}D3S Trajectory Depth: {len(self._d3s_history)} turns{TerminalColors.RESET}")
+                print(f"{TerminalColors.GRAPH}Intent Graph Nodes: {len(self.intent_graph.nodes)}, Edges: {len(self.intent_graph.edges)}{TerminalColors.RESET}")
+                continue
+
+            current_pair = (last_assistant_msg, user_input)
+            prev_pair = history_pairs[-1] if history_pairs else ("System", "Initial conversation start")
+
+            # Evaluate with LLM / prompt manager
+            try:
+                response = await self.llm_manager.analyze_conversation(
+                    self.llm_type, prev_pair, current_pair
+                )
+            except Exception as e:
+                response = {
+                    "overall_progression_summary": {"final_risk_level": 1.0, "risk_progression": "1.0"},
+                    "patterns": {},
+                    "recommendations": [],
+                }
+
+            # Process through the unified defense pipeline
+            decision = self.process_response(
+                response=response,
+                row_idx=0,
+                pair_idx=turn_num,
+                prev_pair=prev_pair,
+                current_pair=current_pair,
+            )
+
+            # Generate Assistant response based on security decision
+            if decision["decision"] == "block":
+                assistant_reply = (
+                    f"{TerminalColors.RED_BOLD}[BLOCKED]{TerminalColors.RESET} I cannot fulfill this request. "
+                    f"Security Directive Triggered: {decision['message']}"
+                )
+            elif decision["decision"] == "warn":
+                assistant_reply = (
+                    f"{TerminalColors.YELLOW_BOLD}[WARNING]{TerminalColors.RESET} Note: This interaction triggered an elevated security warning ({decision['reasoning']}). "
+                    f"Responding within safety guidelines."
+                )
+            else:
+                assistant_reply = f"{TerminalColors.GREEN}I have processed your request safely. How can I assist you further?{TerminalColors.RESET}"
+
+            print(f"\n{TerminalColors.WHITE_BOLD}Assistant >{TerminalColors.RESET} {assistant_reply}")
+            last_assistant_msg = assistant_reply
+            history_pairs.append(current_pair)
 
     async def analyze_conversations(self, tactic_name: str = None, max_rows: int = None):
         df = self.dataset_manager.load_data()
@@ -355,26 +526,30 @@ class ConversationAnalyzer:
             chr(97 + i): tactic for i, tactic in enumerate(unique_tactics)
         }
 
-        # Prompt user to select a tactic if not provided
+        # Prompt user to select mode or tactic if not provided
         if not tactic_name:
-            print("\nAvailable tactics:")
+            print("\nAvailable Modes & Tactics:")
+            print("  0. [LIVE CHAT] Type your own custom multi-turn inputs in real time")
             for choice, tactic in tactic_choices.items():
-                print(f"  {choice}. {tactic}")
+                print(f"  {choice}. {tactic} (HarmBench dataset rows)")
 
             while True:
                 user_choice = (
-                    input("\nSelect a tactic to test (e.g., 'a', 'b', 'c'): ")
+                    input("\nSelect mode/tactic (e.g. '0' for Live Chat, or 'a', 'b', 'c'): ")
                     .strip()
                     .lower()
                 )
-                if user_choice in tactic_choices:
+                if user_choice in ("0", "live", "chat"):
+                    await self.analyze_live_session()
+                    return
+                elif user_choice in tactic_choices:
                     tactic_name = tactic_choices[user_choice]
                     break
                 elif user_choice in unique_tactics:
                     tactic_name = user_choice
                     break
                 else:
-                    print("Invalid choice. Please select a valid option.")
+                    print("Invalid choice. Please enter '0' for Live Chat or a valid tactic option.")
 
         print(f"\nTesting for tactic: {tactic_name}")
         tactic_df = df[df["tactic"] == tactic_name]
@@ -413,6 +588,7 @@ if __name__ == "__main__":
     parser.add_argument("--llm", choices=["gpt", "claude", "gemini", "mock"], help="LLM type")
     parser.add_argument("--tactic", type=str, help="Tactic name to analyze")
     parser.add_argument("--rows", type=int, help="Number of rows to analyze")
+    parser.add_argument("--live", action="store_true", help="Launch live interactive session to enter your own custom prompts in real time")
     args = parser.parse_args()
 
     llm_type = args.llm
@@ -435,4 +611,7 @@ if __name__ == "__main__":
                 print("Invalid input. Please enter a valid number.")
 
     analyzer = ConversationAnalyzer(args.config, llm_type)
-    asyncio.run(analyzer.analyze_conversations(tactic_name=args.tactic, max_rows=args.rows))
+    if args.live:
+        asyncio.run(analyzer.analyze_live_session())
+    else:
+        asyncio.run(analyzer.analyze_conversations(tactic_name=args.tactic, max_rows=args.rows))

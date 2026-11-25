@@ -259,21 +259,21 @@ class RiskCalculator:
 
         # Print calculation details
         print("\n" + "=" * 40)
-        print(f"Progressive Risk Calculation [{mode_label}]:")
+        print(f"\033[1;97mProgressive Risk Calculation [{mode_label}]:\033[0m")
         if use_graph and scaled_graph_risk > 0.0:
-            print(f"  Graph Escalation (δ = {self.graph_weight:.2f}, Scaled Risk = {scaled_graph_risk:.4f})")
+            print(f"  \033[1;94mGraph Escalation  (δ = {self.graph_weight:.2f}, Scaled Risk = {scaled_graph_risk:.4f})\033[0m")
         if use_ctp and scaled_ctp_risk > 0.0:
-            print(f"  CTP Escalation (λ_ctp = {self.ctp_weight:.2f}, Scaled Risk = {scaled_ctp_risk:.4f})")
+            print(f"  \033[1;96mCTP Escalation    (λ_ctp = {self.ctp_weight:.2f}, Scaled Risk = {scaled_ctp_risk:.4f})\033[0m")
         if use_ctstv and scaled_ctstv_risk > 0.0:
-            print(f"  CT-STV Escalation (λ_ctstv = {self.ctstv_weight:.2f}, Scaled Risk = {scaled_ctstv_risk:.4f})")
+            print(f"  \033[1;95mCT-STV Escalation (λ_ctstv = {self.ctstv_weight:.2f}, Scaled Risk = {scaled_ctstv_risk:.4f})\033[0m")
         if use_d3s and scaled_d3s_risk > 0.0:
-            print(f"  D3S Escalation (λ_d3s = {self.d3s_weight:.2f}, Scaled Risk = {scaled_d3s_risk:.4f})")
+            print(f"  \033[1;93mD3S Escalation    (λ_d3s = {self.d3s_weight:.2f}, Scaled Risk = {scaled_d3s_risk:.4f})\033[0m")
         print(f"  Base Progressive Risk: {base_risk:.4f}")
         print(f"  Weights — α: {alpha:.4f}, β: {beta:.4f}, γ: {gamma:.4f}")
         print(f"  Historical Risk  (α * {historical_risk:.4f}): {alpha * historical_risk:.4f}")
         print(f"  Interaction Risk (β * {interaction_risk:.4f}): {beta * interaction_risk:.4f}")
         print(f"  Pattern Risk     (γ * {pattern_risk:.4f}): {gamma * pattern_risk:.4f}")
-        print(f"  Progressive Risk: {progressive_risk:.4f}")
+        print(f"  \033[1;97mProgressive Risk: {progressive_risk:.4f}\033[0m")
         print("=" * 40 + "\n")
         return progressive_risk
 

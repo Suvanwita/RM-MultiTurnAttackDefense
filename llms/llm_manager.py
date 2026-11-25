@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv, find_dotenv
 
 import json
@@ -69,6 +70,10 @@ class LLMManager:
         handler = handlers.get(llm_type)
         if not handler:
             raise ValueError(f"Unsupported LLM type: {llm_type}. Supported types: {list(handlers.keys())}")
+
+        if llm_type == "mock":
+            user_text = current_pair[1] if current_pair and len(current_pair) > 1 else ""
+            return await self._call_mock(prompt, user_text=user_text)
 
         return await handler(prompt)
 
@@ -185,21 +190,30 @@ class LLMManager:
 
         raise last_error
 
-    async def _call_mock(self, prompt: str) -> Dict[str, Any]:
+    async def _call_mock(self, prompt: str, user_text: str = "") -> Dict[str, Any]:
         """
-        Simulated LLM response for testing and offline execution.
+        Simulated LLM response for testing, live interactive demos, and offline execution.
+        Dynamically detects hazardous directives or returns benign status.
         """
+        eval_text = (user_text or prompt).lower()
+        has_hazard = bool(re.search(
+            r"\b(hotwire|bomb|handgun|firearm|exploit|bypass|password|kill|poison|malware|drop database|"
+            r"override|illegal|fake id|minor|purchase|weapon|steal|exfiltrate|credentials|inject|"
+            r"jailbreak|ransomware|keylogger|rootkit|payload|shell|synthesize|detonate|skimmer|opioid)\b",
+            eval_text
+        ))
+        risk_level = 4 if has_hazard else 1
         mock_data = {
             "intent_shift": {
                 "previous_intent": "General inquiry / baseline topic",
-                "current_intent": "Manipulative or sensitive topic escalation",
-                "shift_detected": True,
-                "shift_description": "Detected progression towards restricted or high-risk domain",
-                "risk_level": 4,
+                "current_intent": "Manipulative or sensitive topic escalation" if has_hazard else "General conversational inquiry",
+                "shift_detected": has_hazard,
+                "shift_description": "Detected progression towards restricted domain" if has_hazard else "Coherent standard domain",
+                "risk_level": risk_level,
             },
             "prompt_attack": {
-                "detected": True,
-                "evidence": "Observed multi-turn pattern attempting to elicit sensitive output",
+                "detected": has_hazard,
+                "evidence": "Observed pattern attempting to elicit sensitive output" if has_hazard else "No adversarial pattern detected",
             },
             "patterns": {
                 "language_change": {
@@ -207,27 +221,27 @@ class LLMManager:
                     "evidence": "Same language across turns",
                 },
                 "domain_shift": {
-                    "detected": True,
-                    "evidence": "Topic transitioned from informational to sensitive domain",
+                    "detected": has_hazard,
+                    "evidence": "Topic transitioned from informational to sensitive domain" if has_hazard else "Consistent conversation domain",
                 },
                 "time_sensitivity": {
                     "detected": False,
                     "evidence": "No urgency detected",
                 },
                 "prohibited_content": {
-                    "detected": True,
-                    "evidence": "Referenced prohibited actions/materials",
+                    "detected": has_hazard,
+                    "evidence": "Referenced prohibited actions/materials" if has_hazard else "Standard safe request",
                 },
             },
-            "risk_level": 4,
+            "risk_level": risk_level,
             "overall_progression_summary": {
                 "initial_risk_level": 1,
-                "final_risk_level": 4,
-                "risk_progression": "1 -> 4",
+                "final_risk_level": risk_level,
+                "risk_progression": f"1 -> {risk_level}",
             },
             "recommendations": [
-                "Decline to generate prohibited guidance",
-                "Guide the user to safe educational or defensive alternatives",
+                "Decline to generate prohibited guidance" if has_hazard else "Respond helpfully and accurately",
+                "Guide the user to safe educational or defensive alternatives" if has_hazard else "Maintain helpful tone",
             ],
         }
         content_json = json.dumps(mock_data)
